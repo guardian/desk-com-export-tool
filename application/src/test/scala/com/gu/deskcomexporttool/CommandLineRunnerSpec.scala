@@ -25,7 +25,7 @@ class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers
   it must "return error code if error is returned" in {
     val mockExporter = new Exporter {
       override def export(c: ExportConfig): EitherT[Future, ExporterError, Unit] = {
-        EitherT.leftT(ExporterError())
+        EitherT.leftT(ExporterError(""))
       }
     }
 
