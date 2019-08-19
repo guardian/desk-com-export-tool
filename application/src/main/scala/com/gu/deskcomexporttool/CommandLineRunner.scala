@@ -1,9 +1,9 @@
 package com.gu.deskcomexporttool
 
 import org.slf4j.LoggerFactory
+import scopt.OptionParser
 
 import scala.concurrent.Future
-import scopt.OptionParser
 
 trait CommandLineRunner {
   def run(args: Array[String]): Future[Int]

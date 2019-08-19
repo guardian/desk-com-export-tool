@@ -1,11 +1,11 @@
 package com.gu.deskcomexporttool
 
 import cats.data.EitherT
-import scala.concurrent.ExecutionContext.Implicits.global
 import cats.instances.future._
-import org.scalatest.{FlatSpec, MustMatchers}
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.{FlatSpec, MustMatchers}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers {

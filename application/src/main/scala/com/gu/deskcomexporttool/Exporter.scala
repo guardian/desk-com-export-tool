@@ -9,7 +9,7 @@ trait Exporter {
 }
 
 object Exporter {
-  def apply(): Exporter = new Exporter() {
+  def apply(s3Service: S3Service): Exporter = new Exporter() {
     override def export(config: ExportConfig): EitherT[Future, ExporterError, Unit] = ???
   }
 }

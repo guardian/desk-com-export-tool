@@ -7,6 +7,8 @@ lazy val application = (project in file("application"))
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % "1.2.3",
       "com.github.scopt" %% "scopt" % "3.7.1",
+      "io.circe" %% "circe-parser" % "0.11.1",
+      "io.circe" %% "circe-derivation" % "0.11.0-M2",
       "org.typelevel" %% "cats-core" % "1.6.1",
     ),
     libraryDependencies ++= Seq(
@@ -15,5 +17,5 @@ lazy val application = (project in file("application"))
     scalacOptions ++= Seq(
       "-feature",
       "-language:postfixOps"
-    )
+    ),
   )
