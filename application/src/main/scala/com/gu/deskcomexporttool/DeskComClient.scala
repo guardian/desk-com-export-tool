@@ -34,6 +34,7 @@ object DeskComClient {
             List(authHeader)
           )
         ).leftMap(httpError => DeskComApiError(s"Request for interactions failed: $httpError"))
+        _ <- EitherT.fromEither(validateStatusCode(httpResponse.statusCode))
         parsedResponseBody <- EitherT(Future.successful(parseGetAllInteractions(httpResponse.body)))
       } yield  parsedResponseBody._embedded.entries
     }
@@ -42,6 +43,13 @@ object DeskComClient {
       decode[GetInteractionsResponse](body)
         .left
         .map(parsingFailure => DeskComApiError(s"Failed to parse interaction response: ${parsingFailure}"))
+    }
+
+    private def validateStatusCode(statusCode: Int): Either[DeskComApiError, Unit] = {
+      statusCode match {
+        case 200 => Right(())
+        case statusCode => Left(DeskComApiError(s"Interactions endpoint returned status: $statusCode"))
+      }
     }
   }
 }

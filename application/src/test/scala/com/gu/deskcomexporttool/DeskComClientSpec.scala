@@ -32,7 +32,33 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
             "Test User 1111 <testuser1111@test.com>", "<toaddress1111@test.com>", "<ccaddress1111@test.com>",
             "<bccaddress1111@test.com>", "in", "received", "Test Subject 1111"
           )
-        )
+          )
+    }
+  }
+  it must "return error if status is invalid" in {
+    val mockHttpClient = new HttpClient {
+      override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = {
+        EitherT.right(Future.successful(HttpResponse(400, "error response")))
+      }
+    }
+    val client = DeskComClient(DeskComApiConfig("https://deskapi.com", "testuser", "testpassword"), mockHttpClient)
+
+    Inside.inside(client.getAllInteractions(32, 123).value.futureValue) {
+      case Left(DeskComApiError(message)) =>
+        message must equal("Interactions endpoint returned status: 400")
+    }
+  }
+  it must "return error if http request fails" in {
+    val mockHttpClient = new HttpClient {
+      override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = {
+        EitherT.leftT(HttpError("request failed"))
+      }
+    }
+    val client = DeskComClient(DeskComApiConfig("https://deskapi.com", "testuser", "testpassword"), mockHttpClient)
+
+    Inside.inside(client.getAllInteractions(32, 123).value.futureValue) {
+      case Left(DeskComApiError(message)) =>
+        message must equal("Request for interactions failed: HttpError(request failed)")
     }
   }
 }
