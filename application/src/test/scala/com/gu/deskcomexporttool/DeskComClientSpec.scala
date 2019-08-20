@@ -20,7 +20,7 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
         request.headers must contain only HttpHeader("Authorization", "Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk")
         request.url must equal(s"https://deskapi.com/api/v2/interactions?page=$page&per_page=$pageSize&sort_field=created_at&sort_direction=asc")
 
-        EitherT.right(Future.successful(HttpResponse(200, DeskComClientSpec.getAllInteractionsResponseBody)))
+        EitherT.rightT(HttpResponse(200, DeskComClientSpec.getAllInteractionsResponseBody))
       }
 
       override def close(): Unit = ()
@@ -40,7 +40,7 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
   it must "return error if status is invalid" in {
     val mockHttpClient = new HttpClient {
       override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = {
-        EitherT.right(Future.successful(HttpResponse(400, "error response")))
+        EitherT.rightT(HttpResponse(400, "error response"))
       }
 
       override def close(): Unit = ()

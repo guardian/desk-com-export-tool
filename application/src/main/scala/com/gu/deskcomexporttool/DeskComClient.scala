@@ -40,7 +40,7 @@ object DeskComClient {
           )
         ).leftMap(httpError => DeskComApiError(s"Request for interactions failed: $httpError"))
         _ <- EitherT.fromEither(validateStatusCode(httpResponse.statusCode))
-        parsedResponseBody <- EitherT(Future.successful(parseGetAllInteractions(httpResponse.body)))
+        parsedResponseBody <- EitherT.fromEither(parseGetAllInteractions(httpResponse.body))
       } yield parsedResponseBody._embedded.entries
     }
 
