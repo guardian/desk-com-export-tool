@@ -1,16 +1,38 @@
 package com.gu.deskcomexporttool
 
-import cats.data.EitherT
+import java.net.URI
 
-import scala.concurrent.Future
+import cats.data.EitherT
+import cats.instances.future._
+
+import scala.concurrent.{ExecutionContext, Future}
+import com.softwaremill.sttp._
+import com.softwaremill.sttp.asynchttpclient.future.AsyncHttpClientFutureBackend
 
 trait HttpClient {
   def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse]
+  def close(): Unit
 }
 
 object HttpClient {
-  def apply(): HttpClient = new HttpClient() {
-    override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = ???
+  def apply()(implicit ec: ExecutionContext): HttpClient = new HttpClient() {
+    private implicit val backend = AsyncHttpClientFutureBackend()
+
+    override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = {
+      println(request.url)
+
+      val sttpRequest = sttp.copy[Id, String, Nothing](
+        uri = Uri(new URI(request.url)),
+        method = Method(request.method),
+        headers = request.headers.map(header => (header.key, header.value)))
+
+      for {
+        sttpResponse <- EitherT.right(sttpRequest.send())
+        body <- EitherT.fromEither(sttpResponse.body).leftMap(HttpError(_))
+      } yield HttpResponse(sttpResponse.code, body)
+    }
+
+    override def close(): Unit = backend.close()
   }
 }
 

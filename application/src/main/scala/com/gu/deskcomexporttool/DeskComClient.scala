@@ -7,14 +7,18 @@ import cats.instances.future._
 import io.circe.derivation._
 import io.circe.parser._
 import io.circe.{Decoder, derivation}
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
 
 trait DeskComClient {
   def getAllInteractions(page: Int, pageSize: Int): EitherT[Future, DeskComApiError, List[Interaction]]
+  def close(): Unit
 }
 
 object DeskComClient {
+  private val log = LoggerFactory.getLogger(this.getClass)
+
   def apply(config: DeskComApiConfig, httpClient: HttpClient)(implicit ec: ExecutionContext): DeskComClient = new DeskComClient() {
     private val authHeader = HttpHeader(
       "Authorization",
@@ -42,7 +46,10 @@ object DeskComClient {
     private def parseGetAllInteractions(body: String): Either[DeskComApiError, GetInteractionsResponse] = {
       decode[GetInteractionsResponse](body)
         .left
-        .map(parsingFailure => DeskComApiError(s"Failed to parse interaction response: ${parsingFailure}"))
+        .map{ parsingFailure =>
+          log.debug(s"Failed to parse response error:$parsingFailure response: $body")
+          DeskComApiError(s"Failed to parse interaction response: ${parsingFailure}")
+        }
     }
 
     private def validateStatusCode(statusCode: Int): Either[DeskComApiError, Unit] = {
@@ -51,11 +58,13 @@ object DeskComClient {
         case statusCode => Left(DeskComApiError(s"Interactions endpoint returned status: $statusCode"))
       }
     }
+
+    override def close(): Unit = httpClient.close()
   }
 }
 
 case class Interaction(id: Int, createdAt: String, updatedAt: String, body: String, from: String, to: String,
-                       cc: String, bcc: String, direction: String, status: String, subject: String)
+                       cc: Option[String], bcc: Option[String], direction: String, status: String, subject: String)
 
 case class GetInteractionsEmbedded(entries: List[Interaction])
 
