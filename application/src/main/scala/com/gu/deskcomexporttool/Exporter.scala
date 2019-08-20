@@ -23,7 +23,7 @@ object Exporter {
         }
         .leftMap(apiError => ExporterError(s"Export failed: $apiError"))
 
-      result.value.onComplete{ _ =>
+      result.value.onComplete { _ =>
         s3Writer.close()
         deskComClient.close()
       }

@@ -13,6 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait DeskComClient {
   def getAllInteractions(page: Int, pageSize: Int): EitherT[Future, DeskComApiError, List[Interaction]]
+
   def close(): Unit
 }
 
@@ -40,13 +41,13 @@ object DeskComClient {
         ).leftMap(httpError => DeskComApiError(s"Request for interactions failed: $httpError"))
         _ <- EitherT.fromEither(validateStatusCode(httpResponse.statusCode))
         parsedResponseBody <- EitherT(Future.successful(parseGetAllInteractions(httpResponse.body)))
-      } yield  parsedResponseBody._embedded.entries
+      } yield parsedResponseBody._embedded.entries
     }
 
     private def parseGetAllInteractions(body: String): Either[DeskComApiError, GetInteractionsResponse] = {
       decode[GetInteractionsResponse](body)
         .left
-        .map{ parsingFailure =>
+        .map { parsingFailure =>
           log.debug(s"Failed to parse response error:$parsingFailure response: $body")
           DeskComApiError(s"Failed to parse interaction response: ${parsingFailure}")
         }

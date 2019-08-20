@@ -27,7 +27,8 @@ object S3Service {
 
 trait S3Writer {
   def write(bytes: Interaction): EitherT[Future, S3Error, Unit]
+
   def close(): Unit
 }
 
-case class S3Error(message:String)
+case class S3Error(message: String)

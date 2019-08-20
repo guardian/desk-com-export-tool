@@ -11,6 +11,7 @@ import com.softwaremill.sttp.asynchttpclient.future.AsyncHttpClientFutureBackend
 
 trait HttpClient {
   def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse]
+
   def close(): Unit
 }
 
