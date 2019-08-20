@@ -22,6 +22,8 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
 
         EitherT.right(Future.successful(HttpResponse(200, DeskComClientSpec.getAllInteractionsResponseBody)))
       }
+
+      override def close(): Unit = ()
     }
     val client = DeskComClient(DeskComApiConfig("https://deskapi.com", "testuser", "testpassword"), mockHttpClient)
 
@@ -40,6 +42,8 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
       override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = {
         EitherT.right(Future.successful(HttpResponse(400, "error response")))
       }
+
+      override def close(): Unit = ()
     }
     val client = DeskComClient(DeskComApiConfig("https://deskapi.com", "testuser", "testpassword"), mockHttpClient)
 
@@ -47,12 +51,15 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
       case Left(DeskComApiError(message)) =>
         message must equal("Interactions endpoint returned status: 400")
     }
+
   }
   it must "return error if http request fails" in {
     val mockHttpClient = new HttpClient {
       override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = {
         EitherT.leftT(HttpError("request failed"))
       }
+
+      override def close(): Unit = ()
     }
     val client = DeskComClient(DeskComApiConfig("https://deskapi.com", "testuser", "testpassword"), mockHttpClient)
 
