@@ -8,7 +8,7 @@ import org.scalatest.{FlatSpec, MustMatchers}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers with IntegrationPatience  {
+class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers with IntegrationPatience {
   "CommandLineRunnerSpec" must "parse command line and run feed" in {
     var config: Option[ExportConfig] = None
     val mockExporter = new Exporter {
@@ -26,7 +26,7 @@ class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers
       ExportConfig(
         fetchSize = 50,
         DeskComApiConfig("https://guardianuserhelp.desk.com", "aUsername", "aPassword"),
-        S3Config("s3://bucket/path", "aprofile", true)
+        S3Config("s3://bucket/path", "aprofile", scrub = true)
       )
     ))
   }

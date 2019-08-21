@@ -1,14 +1,13 @@
 package com.gu.deskcomexporttool
 
 import cats.data.EitherT
-import cats.instances.future._
 import cats.instances.either._
+import cats.instances.future._
 import cats.instances.list._
 import cats.syntax.either._
 import cats.syntax.traverse._
 import org.slf4j.LoggerFactory
 
-import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 

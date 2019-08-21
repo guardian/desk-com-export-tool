@@ -12,7 +12,7 @@ trait CommandLineRunner {
 case class ExportConfig(fetchSize: Int = 100,
                         deskComApiConfig: DeskComApiConfig = DeskComApiConfig(baseUrl = "https://guardianuserhelp.desk.com",
                           username = "", password = ""),
-                        s3Config: S3Config = S3Config("s3://ophan-raw-deskdotcom-cases/interactions.csv", "ophan", false))
+                        s3Config: S3Config = S3Config("s3://ophan-raw-deskdotcom-cases/interactions.csv", "ophan", scrub = false))
 
 object CommandLineRunner {
   private val log = LoggerFactory.getLogger(classOf[CommandLineRunner])

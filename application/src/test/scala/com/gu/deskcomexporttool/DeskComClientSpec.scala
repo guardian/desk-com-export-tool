@@ -66,7 +66,7 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
 }
 
 object DeskComClientSpec {
-  lazy val getAllInteractionsResponseBody = Source.fromResource("getAllInteractionsResponseBody.json").mkString
+  lazy val getAllInteractionsResponseBody: String = Source.fromResource("getAllInteractionsResponseBody.json").mkString
 
 }
 

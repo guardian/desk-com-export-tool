@@ -7,7 +7,5 @@ trait DeskComClientFactory {
 }
 
 object DeskComClientFactory {
-  def apply()(implicit ec: ExecutionContext): DeskComClientFactory = new DeskComClientFactory() {
-    override def createClient(config: DeskComApiConfig): DeskComClient = DeskComClient(config, HttpClient())
-  }
+  def apply()(implicit ec: ExecutionContext): DeskComClientFactory = (config: DeskComApiConfig) => DeskComClient(config, HttpClient())
 }

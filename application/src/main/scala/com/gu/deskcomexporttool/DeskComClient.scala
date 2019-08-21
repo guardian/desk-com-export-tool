@@ -51,7 +51,7 @@ object DeskComClient {
       decode[GetInteractionsResponse](body)
         .leftMap { parsingFailure =>
           log.debug(s"Failed to parse response error:$parsingFailure response: $body")
-          DeskComApiError(s"Failed to parse interaction response: ${parsingFailure}")
+          DeskComApiError(s"Failed to parse interaction response: $parsingFailure")
         }
     }
 

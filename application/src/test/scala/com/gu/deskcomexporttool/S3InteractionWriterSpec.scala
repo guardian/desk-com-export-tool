@@ -14,7 +14,7 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
       override def close(): Unit = ()
     }
 
-    Inside.inside(S3InteractionsWriter(mockBinaryWriter, false)) {
+    Inside.inside(S3InteractionsWriter(mockBinaryWriter, scrubSensitiveData = false)) {
       case Right(interactionWriter) =>
         interactionWriter.write(InteractionFixture.interaction) must equal(Right(()))
 
@@ -37,7 +37,7 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
       override def close(): Unit = ()
     }
 
-    Inside.inside(S3InteractionsWriter(mockBinaryWriter, true)) {
+    Inside.inside(S3InteractionsWriter(mockBinaryWriter, scrubSensitiveData = true)) {
       case Right(interactionWriter) =>
         interactionWriter.write(InteractionFixture.interaction) must equal(Right(()))
 

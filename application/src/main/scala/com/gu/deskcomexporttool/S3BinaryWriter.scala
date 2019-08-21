@@ -42,20 +42,20 @@ object S3BinaryWriter {
   }
 
   private def openStream(streamTransferManager: StreamTransferManager, awsClient: AmazonS3) = {
-      Either.catchNonFatal {
-        val stream = streamTransferManager.getMultiPartOutputStreams.get(0)
+    Either.catchNonFatal {
+      val stream = streamTransferManager.getMultiPartOutputStreams.get(0)
 
-        new S3BinaryWriter() {
-          override def outputStream(): OutputStream = stream
+      new S3BinaryWriter() {
+        override def outputStream(): OutputStream = stream
 
-          override def close(): Unit = {
-            streamTransferManager.complete()
-            awsClient.shutdown()
-          }
+        override def close(): Unit = {
+          streamTransferManager.complete()
+          awsClient.shutdown()
         }
-      }.leftMap { ex =>
-        S3Error(s"Failed to open connection to s3: $ex")
       }
+    }.leftMap { ex =>
+      S3Error(s"Failed to open connection to s3: $ex")
+    }
   }
 
   private val S3LocationRegex = """s3://(.*?)/(.*)""".r
