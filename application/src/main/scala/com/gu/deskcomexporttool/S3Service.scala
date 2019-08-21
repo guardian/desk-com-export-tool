@@ -5,16 +5,16 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.ExecutionContext
 
 trait S3Service {
-  def open(location: String): Either[S3Error, S3InteractionsWriter]
+  def open(config: S3Config): Either[S3Error, S3InteractionsWriter]
 }
 
 object S3Service {
   val log = LoggerFactory.getLogger(this.getClass)
 
   def apply()(implicit ec: ExecutionContext): S3Service = new S3Service() {
-    def open(location: String): Either[S3Error, S3InteractionsWriter] = {
+    def open(config: S3Config): Either[S3Error, S3InteractionsWriter] = {
       for {
-        binaryWriter <- S3BinaryWriter("")
+        binaryWriter <- S3BinaryWriter(config.location, config.awsProfile)
         interactionsWriter <- S3InteractionsWriter(binaryWriter)
       } yield interactionsWriter
     }
@@ -22,3 +22,5 @@ object S3Service {
 }
 
 case class S3Error(message: String)
+
+case class S3Config(location: String, awsProfile: String)

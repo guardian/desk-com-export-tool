@@ -18,11 +18,17 @@ class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers
       }
     }
 
-    CommandLineRunner(mockExporter).run(Array("-f", "50", "-u", "aUsername", "-p", "aPassword")).futureValue mustBe 0
+    CommandLineRunner(mockExporter).run(Array(
+      "-f", "50", "-u", "aUsername", "-p", "aPassword", "-o", "aprofile", "s3://bucket/path"
+    )).futureValue mustBe 0
 
     config must equal(Some(
-      ExportConfig(fetchSize = 50, DeskComApiConfig("https://guardianuserhelp.desk.com", "aUsername", "aPassword")))
-    )
+      ExportConfig(
+        fetchSize = 50,
+        DeskComApiConfig("https://guardianuserhelp.desk.com", "aUsername", "aPassword"),
+        S3Config("s3://bucket/path", "aprofile")
+      )
+    ))
   }
   it must "return error code if error is returned" in {
     val mockExporter = new Exporter {

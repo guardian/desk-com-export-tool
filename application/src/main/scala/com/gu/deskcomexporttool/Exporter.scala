@@ -17,7 +17,7 @@ object Exporter {
 
       for {
         s3Writer <- EitherT
-          .fromEither(s3Service.open(""))
+          .fromEither(s3Service.open(config.s3Config))
           .leftMap(error => ExporterError(s"Failed to create s3 writer: $error"))
         res <- writeInteractions(deskComClient, s3Writer)
       } yield res

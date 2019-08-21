@@ -14,13 +14,20 @@ trait S3BinaryWriter {
 }
 
 object S3BinaryWriter {
-  def apply(location: String): Either[S3Error, S3BinaryWriter] = {
+  def apply(location: String, profile: String): Either[S3Error, S3BinaryWriter] = {
+    for {
+      parsedLocation <- parseS3Location(location)
+      writer <- createWriter(parsedLocation, profile)
+    } yield writer
+  }
+
+  def createWriter(s3Location: S3Location, profile: String) = {
     Either.catchNonFatal {
       val awsClient = AmazonS3ClientBuilder.standard()
-        .withCredentials(new ProfileCredentialsProvider("membership"))
+        .withCredentials(new ProfileCredentialsProvider(profile))
         .build()
 
-      val streamTransferManager = new StreamTransferManager("ophan-raw-deskdotcom-cases", "/test/interactions.csv", awsClient)
+      val streamTransferManager = new StreamTransferManager(s3Location.bucket, s3Location.path, awsClient)
 
       val stream = streamTransferManager.getMultiPartOutputStreams.get(0)
 
@@ -35,4 +42,12 @@ object S3BinaryWriter {
       S3Error(s"Failed to create connection to s3: $ex")
     }
   }
+
+  val S3LocationRegex = """s3:/(.*?)/(.*)""".r
+  def parseS3Location(location: String) = location match {
+    case S3LocationRegex(bucket, path) => Right(S3Location(bucket, path))
+    case _ => Left(S3Error(s"Invalid s3 location: $location"))
+  }
 }
+
+case class S3Location(bucket: String, path: String)
