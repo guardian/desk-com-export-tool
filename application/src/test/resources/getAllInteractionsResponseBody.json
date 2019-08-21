@@ -1,0 +1,71 @@
+{
+  "total_entries": 2,
+  "page": 1,
+  "_links": {
+    "self": {
+      "href": "/api/v2/interactions?per_page=2&sort_direction=asc&sort_field=created_at",
+      "class": "page"
+    },
+    "first": {
+      "href": "/api/v2/interactions?per_page=2&sort_direction=asc&sort_field=created_at",
+      "class": "page"
+    },
+    "last": {
+      "href": "/api/v2/interactions?per_page=2&sort_direction=asc&sort_field=created_at",
+      "class": "page"
+    },
+    "previous": null,
+    "next": {
+      "href": "/api/v2/interactions?per_page=2&since_id=1447484657",
+      "class": "page"
+    }
+  },
+  "_embedded": {
+    "entries": [
+      {
+        "id": 1111,
+        "created_at": "2018-01-01T01:01:01Z",
+        "updated_at": "2019-01-01T01:01:01Z",
+        "sent_at": null,
+        "erased_at": null,
+        "hidden_by": null,
+        "hidden_at": null,
+        "body": "test body 1111",
+        "from": "Test User 1111 <testuser1111@test.com>",
+        "to": "<toaddress1111@test.com>",
+        "cc": "<ccaddress1111@test.com>",
+        "bcc": "<bccaddress1111@test.com>",
+        "client_type": "unknown",
+        "direction": "in",
+        "status": "received",
+        "subject": "Test Subject 1111",
+        "hidden": false,
+        "_links": {
+          "self": {
+            "href": "/api/v2/cases/c11111/message",
+            "class": "email"
+          },
+          "splits": {
+            "href": "/api/v2/cases/c1111/replies/r1111/splits",
+            "class": "split"
+          },
+          "outbound_mailbox": null,
+          "case": {
+            "href": "/api/v2/cases/c1111",
+            "class": "case"
+          },
+          "customer": {
+            "href": "/api/v2/customers/c1111",
+            "class": "customer"
+          },
+          "sent_by": null,
+          "erased_by": null,
+          "attachments": {
+            "href": "/api/v2/cases/c1111/message/attachments",
+            "class": "attachment"
+          }
+        }
+      }
+    ]
+  }
+}
