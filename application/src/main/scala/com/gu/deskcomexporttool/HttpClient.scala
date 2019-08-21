@@ -4,10 +4,10 @@ import java.net.URI
 
 import cats.data.EitherT
 import cats.instances.future._
-
-import scala.concurrent.{ExecutionContext, Future}
 import com.softwaremill.sttp._
 import com.softwaremill.sttp.asynchttpclient.future.AsyncHttpClientFutureBackend
+
+import scala.concurrent.{ExecutionContext, Future}
 
 trait HttpClient {
   def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse]
@@ -17,7 +17,7 @@ trait HttpClient {
 
 object HttpClient {
   def apply()(implicit ec: ExecutionContext): HttpClient = new HttpClient() {
-    private implicit val backend = AsyncHttpClientFutureBackend()
+    private implicit val backend: SttpBackend[Future, Nothing] = AsyncHttpClientFutureBackend()
 
     override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = {
       println(request.url)
@@ -29,7 +29,7 @@ object HttpClient {
 
       for {
         sttpResponse <- EitherT.right(sttpRequest.send())
-        body <- EitherT.fromEither(sttpResponse.body).leftMap(HttpError(_))
+        body <- EitherT.fromEither(sttpResponse.body).leftMap(HttpError)
       } yield HttpResponse(sttpResponse.code, body)
     }
 

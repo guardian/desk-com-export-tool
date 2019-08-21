@@ -27,6 +27,8 @@ object DeskComClient {
       s"Basic ${Base64.getEncoder.encodeToString(s"${config.username}:${config.password}".getBytes("UTF-8"))}"
     )
 
+    implicit val interactionLinkDecoder: Decoder[Link] = deriveDecoder(derivation.renaming.snakeCase)
+    implicit val interactionLinksDecoder: Decoder[InteractionLinks] = deriveDecoder(derivation.renaming.snakeCase)
     implicit val interactionDecoder: Decoder[Interaction] = deriveDecoder(derivation.renaming.snakeCase)
     implicit val interactionEmbeddedDecoder: Decoder[GetInteractionsEmbedded] = deriveDecoder(derivation.renaming.snakeCase)
     implicit val interactionResponseDecoder: Decoder[GetInteractionsResponse] = deriveDecoder(derivation.renaming.snakeCase)
@@ -49,7 +51,7 @@ object DeskComClient {
       decode[GetInteractionsResponse](body)
         .leftMap { parsingFailure =>
           log.debug(s"Failed to parse response error:$parsingFailure response: $body")
-          DeskComApiError(s"Failed to parse interaction response: ${parsingFailure}")
+          DeskComApiError(s"Failed to parse interaction response: $parsingFailure")
         }
     }
 
@@ -64,8 +66,13 @@ object DeskComClient {
   }
 }
 
-case class Interaction(id: Int, createdAt: String, updatedAt: String, body: String, from: String, to: String,
-                       cc: Option[String], bcc: Option[String], direction: String, status: String, subject: String)
+case class Interaction(id: Int, createdAt: String, updatedAt: String, body: String, from: String, to: Option[String],
+                       cc: Option[String], bcc: Option[String], direction: String, status: String, subject: String,
+                       _links: InteractionLinks)
+
+case class InteractionLinks(self: Link)
+
+case class Link(href: String)
 
 case class GetInteractionsEmbedded(entries: List[Interaction])
 

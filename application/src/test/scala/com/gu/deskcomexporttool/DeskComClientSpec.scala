@@ -29,12 +29,7 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
 
     Inside.inside(client.getAllInteractions(page, pageSize).value.futureValue) {
       case Right(interactions) =>
-        interactions must contain only
-          Interaction(1111, "2018-01-01T01:01:01Z", "2019-01-01T01:01:01Z", "test body 1111",
-            "Test User 1111 <testuser1111@test.com>", "<toaddress1111@test.com>", Some("<ccaddress1111@test.com>"),
-            Some("<bccaddress1111@test.com>"), "in", "received", "Test Subject 1111"
-          )
-
+        interactions must contain only InteractionFixture.interaction
     }
   }
   it must "return error if status is invalid" in {
@@ -71,7 +66,7 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
 }
 
 object DeskComClientSpec {
-  lazy val getAllInteractionsResponseBody = Source.fromResource("getAllInteractionsResponseBody.json").mkString
+  lazy val getAllInteractionsResponseBody: String = Source.fromResource("getAllInteractionsResponseBody.json").mkString
 
 }
 

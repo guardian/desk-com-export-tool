@@ -1,34 +1,21 @@
 package com.gu.deskcomexporttool
 
-import cats.data.EitherT
-import cats.instances.future._
-import org.slf4j.LoggerFactory
-
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 trait S3Service {
-  def open(location: String): S3Writer
+  def open(config: S3Config): Either[S3Error, S3InteractionsWriter]
 }
 
 object S3Service {
-  val log = LoggerFactory.getLogger(this.getClass)
 
-  def apply()(implicit ec: ExecutionContext): S3Service = new S3Service() {
-    def open(location: String): S3Writer = new S3Writer {
-      override def write(interaction: Interaction): EitherT[Future, S3Error, Unit] = {
-        log.info(s"Interaction id: ${interaction.id}")
-        EitherT.rightT(())
-      }
-
-      override def close(): Unit = ()
-    }
+  def apply()(implicit ec: ExecutionContext): S3Service = (config: S3Config) => {
+    for {
+      binaryWriter <- S3BinaryWriter(config.location, config.awsProfile)
+      interactionsWriter <- S3InteractionsWriter(binaryWriter, config.scrub)
+    } yield interactionsWriter
   }
 }
 
-trait S3Writer {
-  def write(bytes: Interaction): EitherT[Future, S3Error, Unit]
-
-  def close(): Unit
-}
-
 case class S3Error(message: String)
+
+case class S3Config(location: String, awsProfile: String, scrub: Boolean)
