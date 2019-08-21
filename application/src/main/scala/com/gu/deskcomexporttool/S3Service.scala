@@ -9,7 +9,7 @@ trait S3Service {
 }
 
 object S3Service {
-  val log = LoggerFactory.getLogger(this.getClass)
+  private val log = LoggerFactory.getLogger(this.getClass)
 
   def apply()(implicit ec: ExecutionContext): S3Service = new S3Service() {
     def open(config: S3Config): Either[S3Error, S3InteractionsWriter] = {

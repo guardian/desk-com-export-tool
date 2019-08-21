@@ -21,7 +21,7 @@ object S3BinaryWriter {
     } yield writer
   }
 
-  def createWriter(s3Location: S3Location, profile: String) = {
+  private def createWriter(s3Location: S3Location, profile: String) = {
     Either.catchNonFatal {
       val awsClient = AmazonS3ClientBuilder.standard()
         .withCredentials(new ProfileCredentialsProvider(profile))
@@ -43,8 +43,9 @@ object S3BinaryWriter {
     }
   }
 
-  val S3LocationRegex = """s3://(.*?)/(.*)""".r
-  def parseS3Location(location: String) = location match {
+  private val S3LocationRegex = """s3://(.*?)/(.*)""".r
+
+  private def parseS3Location(location: String) = location match {
     case S3LocationRegex(bucket, path) => Right(S3Location(bucket, path))
     case _ => Left(S3Error(s"Invalid s3 location: $location"))
   }
