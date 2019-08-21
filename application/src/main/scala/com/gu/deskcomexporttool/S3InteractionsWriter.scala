@@ -62,7 +62,7 @@ object S3InteractionsWriter {
                 interaction.updatedAt,
                 scrubString(interaction.body, scrubSensitiveData),
                 scrubString(interaction.from, scrubSensitiveData),
-                scrubString(interaction.to, scrubSensitiveData),
+                scrubString(interaction.to.getOrElse(""), scrubSensitiveData),
                 scrubString(interaction.cc.getOrElse(""), scrubSensitiveData),
                 scrubString(interaction.bcc.getOrElse(""), scrubSensitiveData),
                 interaction.direction,
