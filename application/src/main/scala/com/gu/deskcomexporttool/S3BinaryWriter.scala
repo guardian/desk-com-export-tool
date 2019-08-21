@@ -43,7 +43,7 @@ object S3BinaryWriter {
     }
   }
 
-  val S3LocationRegex = """s3:/(.*?)/(.*)""".r
+  val S3LocationRegex = """s3://(.*?)/(.*)""".r
   def parseS3Location(location: String) = location match {
     case S3LocationRegex(bucket, path) => Right(S3Location(bucket, path))
     case _ => Left(S3Error(s"Invalid s3 location: $location"))
