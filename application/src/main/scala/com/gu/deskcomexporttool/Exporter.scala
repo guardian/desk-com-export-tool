@@ -13,9 +13,17 @@ trait Exporter {
 object Exporter {
   def apply(s3Service: S3Service, deskComClientFactory: DeskComClientFactory)(implicit ec: ExecutionContext): Exporter = new Exporter() {
     override def export(config: ExportConfig): EitherT[Future, ExporterError, Unit] = {
-      val s3Writer = s3Service.open("")
       val deskComClient = deskComClientFactory.createClient(config.deskComApiConfig)
 
+      for {
+        s3Writer <- EitherT
+          .fromEither(s3Service.open(""))
+          .leftMap(error => ExporterError(s"Failed to create s3 writer: $error"))
+        res <- writeInteractions(deskComClient, s3Writer)
+      } yield res
+    }
+
+    private def writeInteractions(deskComClient: DeskComClient, s3Writer: S3InteractionsWriter) = {
       val result = deskComClient
         .getAllInteractions(1, 1)
         .map { interactions: immutable.Seq[Interaction] =>

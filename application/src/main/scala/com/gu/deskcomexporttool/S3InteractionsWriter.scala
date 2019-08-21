@@ -1,0 +1,50 @@
+package com.gu.deskcomexporttool
+
+import java.io.{BufferedWriter, OutputStreamWriter}
+
+import cats.syntax.either._
+import org.apache.commons.csv.{CSVFormat, QuoteMode}
+import org.slf4j.LoggerFactory
+
+
+trait S3InteractionsWriter {
+  def write(bytes: Interaction): Either[S3Error, Unit]
+
+  def close(): Unit
+}
+
+object S3InteractionsWriter {
+  private val log = LoggerFactory.getLogger(this.getClass)
+
+  def apply(s3BinaryWriter: S3BinaryWriter): Either[S3Error, S3InteractionsWriter] = {
+    Either.catchNonFatal {
+      CSVFormat
+        .DEFAULT
+        .withQuoteMode(QuoteMode.ALL)
+        .withRecordSeparator("\n")
+        .withHeader("case_id", "created_at", "updated_at", "body", "from", "to", "cc", "bcc", "direction",
+          "status", "subject")
+        .print(new BufferedWriter(new OutputStreamWriter(s3BinaryWriter.outputStream(), "UTF-8")))
+    }.bimap(
+      { ex =>
+        S3Error(s"Failed to write headers: $ex")
+      },
+      { printer =>
+        new S3InteractionsWriter() {
+          override def write(interaction: Interaction): Either[S3Error, Unit] = {
+            log.debug(s"Writing interaction: $interaction")
+            Either.catchNonFatal {
+              printer.printRecord("todo", interaction.createdAt, interaction.updatedAt, interaction.body, interaction.from,
+                interaction.to, interaction.cc.getOrElse(""), interaction.bcc.getOrElse(""), interaction.direction, interaction.status, interaction.subject)
+            }.leftMap(ex => S3Error(s"Failed to write headers: $ex"))
+          }
+
+          override def close(): Unit = {
+            printer.close()
+            s3BinaryWriter.close()
+          }
+        }
+      }
+    )
+  }
+}

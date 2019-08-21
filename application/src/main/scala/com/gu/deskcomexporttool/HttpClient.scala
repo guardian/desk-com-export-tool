@@ -4,10 +4,10 @@ import java.net.URI
 
 import cats.data.EitherT
 import cats.instances.future._
-
-import scala.concurrent.{ExecutionContext, Future}
 import com.softwaremill.sttp._
 import com.softwaremill.sttp.asynchttpclient.future.AsyncHttpClientFutureBackend
+
+import scala.concurrent.{ExecutionContext, Future}
 
 trait HttpClient {
   def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse]
