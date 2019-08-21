@@ -2,13 +2,13 @@ package com.gu.deskcomexporttool
 
 import cats.data.EitherT
 import cats.instances.future._
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{FlatSpec, MustMatchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers {
+class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers with IntegrationPatience  {
   "CommandLineRunnerSpec" must "parse command line and run feed" in {
     var config: Option[ExportConfig] = None
     val mockExporter = new Exporter {

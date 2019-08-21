@@ -17,14 +17,8 @@ object S3BinaryWriter {
   def apply(location: String, profile: String): Either[S3Error, S3BinaryWriter] = {
     for {
       parsedLocation <- parseS3Location(location)
-      writer <- createWriter(parsedLocation, profile)
-    } yield writer
-  }
-
-  private def createWriter(s3Location: S3Location, profile: String) = {
-    for {
       awsClient <- createAwsClient(profile)
-      transferManager <- createTransferManager(s3Location, awsClient)
+      transferManager <- createTransferManager(parsedLocation, awsClient)
       stream <- openStream(transferManager, awsClient)
     } yield stream
   }
