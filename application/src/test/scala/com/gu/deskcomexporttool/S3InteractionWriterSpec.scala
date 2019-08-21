@@ -23,7 +23,7 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
         new String(writtenData.toByteArray, "UTF-8") must equal(
           "\"case_id\",\"created_at\",\"updated_at\",\"body\",\"from\",\"to\",\"cc\",\"bcc\",\"direction\"," +
             "\"status\",\"subject\"\n" +
-            "\"todo\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"test body 1111\"," +
+            "\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"test body 1111\"," +
             "\"Test User 1111 <testuser1111@test.com>\",\"<toaddress1111@test.com>\",\"<ccaddress1111@test.com>\"," +
             "\"<bccaddress1111@test.com>\",\"in\",\"received\",\"Test Subject 1111\"\n"
         )

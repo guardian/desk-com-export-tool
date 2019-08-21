@@ -3,7 +3,7 @@ package com.gu.deskcomexporttool
 import java.io.{BufferedWriter, OutputStreamWriter}
 
 import cats.syntax.either._
-import org.apache.commons.csv.{CSVFormat, QuoteMode}
+import org.apache.commons.csv.{CSVFormat, CSVPrinter, QuoteMode}
 import org.slf4j.LoggerFactory
 
 
@@ -33,18 +33,35 @@ object S3InteractionsWriter {
         new S3InteractionsWriter() {
           override def write(interaction: Interaction): Either[S3Error, Unit] = {
             log.debug(s"Writing interaction: $interaction")
-            Either.catchNonFatal {
-              printer.printRecord("todo", interaction.createdAt, interaction.updatedAt, interaction.body, interaction.from,
-                interaction.to, interaction.cc.getOrElse(""), interaction.bcc.getOrElse(""), interaction.direction, interaction.status, interaction.subject)
-            }.leftMap(ex => S3Error(s"Failed to write headers: $ex"))
+            for {
+              caseId <- parseSelfLink(interaction._links.self)
+              writeInteractionResult <- writeInteraction(printer, interaction, caseId)
+            } yield writeInteractionResult
           }
 
           override def close(): Unit = {
             printer.close()
             s3BinaryWriter.close()
           }
+
+          private val SelfLinkRegex = """/api/v2/cases/(.*?)/.*""".r
+
+          private def parseSelfLink(link: Link): Either[S3Error, String] = {
+            link.href match {
+              case SelfLinkRegex(caseId) => Right(caseId)
+              case _ => Left(S3Error(s"Failed to parse Interaction self link: ${link.href}"))
+            }
+          }
+
+          private def writeInteraction(printer: CSVPrinter, interaction: Interaction, caseId: String) = {
+            Either.catchNonFatal {
+              printer.printRecord(caseId, interaction.createdAt, interaction.updatedAt, interaction.body, interaction.from,
+                interaction.to, interaction.cc.getOrElse(""), interaction.bcc.getOrElse(""), interaction.direction, interaction.status, interaction.subject)
+            }.leftMap(ex => S3Error(s"Failed to write headers: $ex"))
+          }
         }
       }
     )
   }
+
 }
