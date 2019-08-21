@@ -26,15 +26,15 @@ object Exporter {
         s3Writer <- EitherT
           .fromEither[Future](s3Service.open(config.s3Config))
           .leftMap(error => ExporterError(s"Failed to create s3 writer: $error"))
-        _ <- writeInteractions(deskComClient, s3Writer)
+        _ <- writeInteractions(deskComClient, s3Writer, config.fetchSize)
       } yield ()
     }
 
-    private def writeInteractions(deskComClient: DeskComClient, s3Writer: S3InteractionsWriter) = {
+    private def writeInteractions(deskComClient: DeskComClient, s3Writer: S3InteractionsWriter, pageSize: Int) = {
       val result =
         for {
           interactions <- deskComClient
-            .getAllInteractions(1, 1)
+            .getAllInteractions(1, pageSize)
             .leftMap(apiError => ExporterError(s"Export failed: $apiError"))
           _ <- EitherT.fromEither[Future] {
             interactions
