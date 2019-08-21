@@ -16,7 +16,7 @@ trait S3InteractionsWriter {
 object S3InteractionsWriter {
   private val log = LoggerFactory.getLogger(this.getClass)
 
-  def apply(s3BinaryWriter: S3BinaryWriter): Either[S3Error, S3InteractionsWriter] = {
+  def apply(s3BinaryWriter: S3BinaryWriter, scrubSensitiveData: Boolean): Either[S3Error, S3InteractionsWriter] = {
     Either.catchNonFatal {
       CSVFormat
         .DEFAULT
@@ -35,7 +35,7 @@ object S3InteractionsWriter {
             log.debug(s"Writing interaction: $interaction")
             for {
               caseId <- parseSelfLink(interaction._links.self)
-              writeInteractionResult <- writeInteraction(printer, interaction, caseId)
+              writeInteractionResult <- writeInteraction(printer, interaction, caseId, scrubSensitiveData)
             } yield writeInteractionResult
           }
 
@@ -53,11 +53,31 @@ object S3InteractionsWriter {
             }
           }
 
-          private def writeInteraction(printer: CSVPrinter, interaction: Interaction, caseId: String) = {
+          private def writeInteraction(printer: CSVPrinter, interaction: Interaction, caseId: String,
+                                       scrubSensitiveData: Boolean) = {
             Either.catchNonFatal {
-              printer.printRecord(caseId, interaction.createdAt, interaction.updatedAt, interaction.body, interaction.from,
-                interaction.to, interaction.cc.getOrElse(""), interaction.bcc.getOrElse(""), interaction.direction, interaction.status, interaction.subject)
+              printer.printRecord(
+                caseId,
+                interaction.createdAt,
+                interaction.updatedAt,
+                scrubString(interaction.body, scrubSensitiveData),
+                scrubString(interaction.from, scrubSensitiveData),
+                scrubString(interaction.to, scrubSensitiveData),
+                scrubString(interaction.cc.getOrElse(""), scrubSensitiveData),
+                scrubString(interaction.bcc.getOrElse(""), scrubSensitiveData),
+                interaction.direction,
+                interaction.status,
+                scrubString(interaction.subject, scrubSensitiveData)
+              )
             }.leftMap(ex => S3Error(s"Failed to write headers: $ex"))
+          }
+
+          private def scrubString(string: String, scrub: Boolean) = {
+            if (scrub) {
+              new String(Array.fill(string.length)('x'))
+            } else {
+              string
+            }
           }
         }
       }
