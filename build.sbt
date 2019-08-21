@@ -23,4 +23,5 @@ lazy val application = (project in file("application"))
       "-feature",
       "-language:postfixOps"
     ),
+    addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.3" cross CrossVersion.binary),
   )
