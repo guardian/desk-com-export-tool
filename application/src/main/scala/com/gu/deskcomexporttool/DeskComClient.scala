@@ -4,6 +4,7 @@ import java.util.Base64
 
 import cats.data.EitherT
 import cats.instances.future._
+import cats.syntax.either._
 import io.circe.derivation._
 import io.circe.parser._
 import io.circe.{Decoder, derivation}
@@ -46,8 +47,7 @@ object DeskComClient {
 
     private def parseGetAllInteractions(body: String): Either[DeskComApiError, GetInteractionsResponse] = {
       decode[GetInteractionsResponse](body)
-        .left
-        .map { parsingFailure =>
+        .leftMap { parsingFailure =>
           log.debug(s"Failed to parse response error:$parsingFailure response: $body")
           DeskComApiError(s"Failed to parse interaction response: ${parsingFailure}")
         }
