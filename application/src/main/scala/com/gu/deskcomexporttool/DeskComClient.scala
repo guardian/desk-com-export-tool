@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
 
 trait DeskComClient {
-  def getAllInteractions(page: Int, pageSize: Int): EitherT[Future, DeskComApiError, List[Interaction]]
+  def getAllInteractions(sinceId: Int, pageSize: Int): EitherT[Future, DeskComApiError, GetInteractionsResponse]
 
   def close(): Unit
 }
@@ -29,22 +29,23 @@ object DeskComClient {
 
     implicit val interactionLinkDecoder: Decoder[Link] = deriveDecoder(derivation.renaming.snakeCase)
     implicit val interactionLinksDecoder: Decoder[InteractionLinks] = deriveDecoder(derivation.renaming.snakeCase)
+    implicit val interactionResultsLinksDecoder: Decoder[InteractionResultsLinks] = deriveDecoder(derivation.renaming.snakeCase)
     implicit val interactionDecoder: Decoder[Interaction] = deriveDecoder(derivation.renaming.snakeCase)
     implicit val interactionEmbeddedDecoder: Decoder[GetInteractionsEmbedded] = deriveDecoder(derivation.renaming.snakeCase)
     implicit val interactionResponseDecoder: Decoder[GetInteractionsResponse] = deriveDecoder(derivation.renaming.snakeCase)
 
-    override def getAllInteractions(page: Int, pageSize: Int): EitherT[Future, DeskComApiError, List[Interaction]] = {
+    override def getAllInteractions(sinceId: Int, pageSize: Int): EitherT[Future, DeskComApiError, GetInteractionsResponse] = {
       for {
         httpResponse <- httpClient.request(
           HttpRequest(
             "GET",
-            s"${config.baseUrl}/api/v2/interactions?page=$page&per_page=$pageSize&sort_field=created_at&sort_direction=asc",
+            s"${config.baseUrl}/api/v2/interactions?since_id=$sinceId&per_page=$pageSize&sort_field=created_at&sort_direction=asc",
             List(authHeader)
           )
         ).leftMap(httpError => DeskComApiError(s"Request for interactions failed: $httpError"))
         _ <- EitherT.fromEither(validateStatusCode(httpResponse.statusCode))
         parsedResponseBody <- EitherT.fromEither(parseGetAllInteractions(httpResponse.body))
-      } yield parsedResponseBody._embedded.entries
+      } yield parsedResponseBody
     }
 
     private def parseGetAllInteractions(body: String): Either[DeskComApiError, GetInteractionsResponse] = {
@@ -72,11 +73,13 @@ case class Interaction(id: Int, createdAt: String, updatedAt: String, body: Stri
 
 case class InteractionLinks(self: Link)
 
+case class InteractionResultsLinks(next: Link)
+
 case class Link(href: String)
 
 case class GetInteractionsEmbedded(entries: List[Interaction])
 
-case class GetInteractionsResponse(_embedded: GetInteractionsEmbedded)
+case class GetInteractionsResponse(_links:InteractionResultsLinks, _embedded: GetInteractionsEmbedded)
 
 case class DeskComApiConfig(baseUrl: String, username: String, password: String)
 

@@ -33,11 +33,13 @@ object Exporter {
     private def writeInteractions(deskComClient: DeskComClient, s3Writer: S3InteractionsWriter, pageSize: Int) = {
       val result =
         for {
-          interactions <- deskComClient
+          interactionsResponse <- deskComClient
             .getAllInteractions(1, pageSize)
             .leftMap(apiError => ExporterError(s"Export failed: $apiError"))
           _ <- EitherT.fromEither[Future] {
-            interactions
+            interactionsResponse
+              ._embedded
+              .entries
               .traverse[Either[S3Error, ?], Unit](interaction => s3Writer.write(interaction))
               .leftMap(apiError => ExporterError(s"Export failed: $apiError"))
           }
