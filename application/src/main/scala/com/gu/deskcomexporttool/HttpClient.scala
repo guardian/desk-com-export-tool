@@ -33,7 +33,7 @@ object HttpClient {
       for {
         sttpResponse <- EitherT.right(sttpRequest.send())
         _ = log.debug(s"Received desk.com response status:${sttpResponse.code} body:${sttpResponse.body.right.getOrElse("").take(200)}")
-        body <- EitherT.fromEither(sttpResponse.body).leftMap(HttpError)
+        body = sttpResponse.body.fold(identity, identity)
       } yield HttpResponse(sttpResponse.code, body)
     }
 
