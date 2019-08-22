@@ -11,7 +11,7 @@ import scala.io.Source
 
 class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers with IntegrationPatience {
   "DeskComClient" must "make getAllInteractions request and parse response" in {
-    val sinceId = 32
+    val sinceId = "0"
     val pageSize = 123
 
     val mockHttpClient = new HttpClient {
@@ -43,7 +43,7 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
     }
     val client = DeskComClient(DeskComApiConfig("https://deskapi.com", "testuser", "testpassword"), mockHttpClient)
 
-    Inside.inside(client.getAllInteractions(0, 123).value.futureValue) {
+    Inside.inside(client.getAllInteractions("0", 123).value.futureValue) {
       case Left(DeskComApiError(message)) =>
         message must equal("Interactions endpoint returned status: 400")
     }
@@ -59,7 +59,7 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
     }
     val client = DeskComClient(DeskComApiConfig("https://deskapi.com", "testuser", "testpassword"), mockHttpClient)
 
-    Inside.inside(client.getAllInteractions(32, 123).value.futureValue) {
+    Inside.inside(client.getAllInteractions("32", 123).value.futureValue) {
       case Left(DeskComApiError(message)) =>
         message must equal("Request for interactions failed: HttpError(request failed)")
     }

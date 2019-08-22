@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
 
 trait DeskComClient {
-  def getAllInteractions(sinceId: Int, pageSize: Int): EitherT[Future, DeskComApiError, GetInteractionsResponse]
+  def getAllInteractions(sinceId: String, pageSize: Int): EitherT[Future, DeskComApiError, GetInteractionsResponse]
 
   def close(): Unit
 }
@@ -34,7 +34,7 @@ object DeskComClient {
     implicit val interactionEmbeddedDecoder: Decoder[GetInteractionsEmbedded] = deriveDecoder(derivation.renaming.snakeCase)
     implicit val interactionResponseDecoder: Decoder[GetInteractionsResponse] = deriveDecoder(derivation.renaming.snakeCase)
 
-    override def getAllInteractions(sinceId: Int, pageSize: Int): EitherT[Future, DeskComApiError, GetInteractionsResponse] = {
+    override def getAllInteractions(sinceId: String, pageSize: Int): EitherT[Future, DeskComApiError, GetInteractionsResponse] = {
       for {
         httpResponse <- httpClient.request(
           HttpRequest(

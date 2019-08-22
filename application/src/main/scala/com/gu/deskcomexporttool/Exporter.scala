@@ -18,30 +18,29 @@ trait Exporter {
 object Exporter {
   private val log = LoggerFactory.getLogger(this.getClass)
 
-  def apply(s3Service: S3Service, deskComClientFactory: DeskComClientFactory)(implicit ec: ExecutionContext): Exporter = new Exporter() {
+  def apply(s3Service: S3Service, interactionFetcherFactory: InteractionFetcherFactory)(implicit ec: ExecutionContext): Exporter = new Exporter() {
     override def export(config: ExportConfig): EitherT[Future, ExporterError, Unit] = {
-      val deskComClient = deskComClientFactory.createClient(config.deskComApiConfig)
+      val deskComClient = interactionFetcherFactory.create(config.deskComApiConfig, config.pageSize)
 
       for {
         s3Writer <- EitherT
           .fromEither[Future](s3Service.open(config.s3Config))
           .leftMap(error => ExporterError(s"Failed to create s3 writer: $error"))
-        _ <- writeInteractions(deskComClient, s3Writer, config.fetchSize)
+        _ <- writeInteractions(deskComClient, s3Writer, config.pageSize)
       } yield ()
     }
 
-    private def writeInteractions(deskComClient: DeskComClient, s3Writer: S3InteractionsWriter, pageSize: Int) = {
+    private def writeInteractions(interactionFetcher: InteractionFetcher, s3Writer: S3InteractionsWriter, pageSize: Int) = {
       val result =
         for {
-          interactionsResponse <- deskComClient
-            .getAllInteractions(1, pageSize)
+          interactions <- interactionFetcher
+            .getInteractions("0")
             .leftMap(apiError => ExporterError(s"Export failed: $apiError"))
           _ <- EitherT.fromEither[Future] {
-            interactionsResponse
-              ._embedded
-              .entries
-              .traverse[Either[S3Error, ?], Unit](interaction => s3Writer.write(interaction))
-              .leftMap(apiError => ExporterError(s"Export failed: $apiError"))
+          interactions
+            .interactions
+            .traverse[Either[S3Error, ?], Unit](interaction => s3Writer.write(interaction))
+            .leftMap(apiError => ExporterError(s"Export failed: $apiError"))
           }
         } yield ()
 
@@ -49,7 +48,7 @@ object Exporter {
         result.value.transform { result =>
           Try {
             s3Writer.close()
-            deskComClient.close()
+            interactionFetcher.close()
           }.recover {
             case ex => log.error(s"Failed to shutdown gracefully: $ex")
           }
