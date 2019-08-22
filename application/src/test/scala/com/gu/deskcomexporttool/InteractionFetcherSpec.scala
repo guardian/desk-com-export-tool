@@ -26,13 +26,33 @@ class InteractionFetcherSpec extends FlatSpec with ScalaFutures with MustMatcher
         )
       }
 
-      override def close(): Unit = ???
+      override def close(): Unit = ()
     }
 
     Inside.inside(InteractionFetcher(mockDeskComClient, testPageSize).getInteractions(startSinceId).value.futureValue) {
       case Right(interactions) =>
-        interactions.interactions must contain only (InteractionFixture.interaction)
+        interactions.interactions must contain only InteractionFixture.interaction
         interactions.nextBatchSinceId must equal(nextSinceId)
     }
+  }
+  it must "map DeskComUnprocessableEntity to InteractionFetcherNoMoreInteractions" in {
+    checkErrorMapping(DeskComUnprocessableEntity(""), InteractionFetcherNoMoreInteractions())
+  }
+
+  it must "map DeskComUnexpectedApiError to InteractionFetcherUnexpectedError" in {
+    checkErrorMapping(DeskComUnexpectedApiError("failed"), InteractionFetcherUnexpectedError("get interactions request failed: failed"))
+  }
+
+  private def checkErrorMapping(inError: DeskComApiError, outError: InteractionFetcherError): Any = {
+    val mockDeskComClient = new DeskComClient {
+      override def getAllInteractions(sinceId: String, pageSize: Int): EitherT[Future, DeskComApiError, GetInteractionsResponse] = {
+        EitherT.leftT(inError)
+      }
+
+      override def close(): Unit = ()
+    }
+
+    InteractionFetcher(mockDeskComClient, 12).getInteractions("start-since-id").value.futureValue must
+      equal(Left(outError))
   }
 }
