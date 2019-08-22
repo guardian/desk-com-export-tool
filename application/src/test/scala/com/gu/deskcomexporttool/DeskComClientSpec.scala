@@ -18,7 +18,7 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
       override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = {
         request.method must equal("GET")
         request.headers must contain only HttpHeader("Authorization", "Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk")
-        request.url must equal(s"https://deskapi.com/api/v2/interactions?since_id=$sinceId&per_page=$pageSize&sort_field=created_at&sort_direction=asc")
+        request.url must equal(s"https://deskapi.com/api/v2/interactions?since_id=$sinceId&per_page=$pageSize")
 
         EitherT.rightT(HttpResponse(200, DeskComClientSpec.getAllInteractionsResponseBody))
       }
@@ -44,10 +44,24 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
     val client = DeskComClient(DeskComApiConfig("https://deskapi.com", "testuser", "testpassword"), mockHttpClient)
 
     Inside.inside(client.getAllInteractions("0", 123).value.futureValue) {
-      case Left(DeskComApiError(message)) =>
+      case Left(DeskComUnexpectedApiError(message)) =>
         message must equal("Interactions endpoint returned status: 400")
     }
+  }
+  it must "return unprocessable if status is 422" in {
+    val mockHttpClient = new HttpClient {
+      override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = {
+        EitherT.rightT(HttpResponse(422, "error response"))
+      }
 
+      override def close(): Unit = ()
+    }
+    val client = DeskComClient(DeskComApiConfig("https://deskapi.com", "testuser", "testpassword"), mockHttpClient)
+
+    Inside.inside(client.getAllInteractions("0", 123).value.futureValue) {
+      case Left(DeskComUnprocessableEntity(message)) =>
+        message must equal("error response")
+    }
   }
   it must "return error if http request fails" in {
     val mockHttpClient = new HttpClient {
@@ -60,7 +74,7 @@ class DeskComClientSpec extends FlatSpec with ScalaFutures with MustMatchers wit
     val client = DeskComClient(DeskComApiConfig("https://deskapi.com", "testuser", "testpassword"), mockHttpClient)
 
     Inside.inside(client.getAllInteractions("32", 123).value.futureValue) {
-      case Left(DeskComApiError(message)) =>
+      case Left(DeskComUnexpectedApiError(message)) =>
         message must equal("Request for interactions failed: HttpError(request failed)")
     }
   }

@@ -6,6 +6,7 @@ import cats.data.EitherT
 import cats.instances.future._
 import com.softwaremill.sttp._
 import com.softwaremill.sttp.asynchttpclient.future.AsyncHttpClientFutureBackend
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -16,11 +17,13 @@ trait HttpClient {
 }
 
 object HttpClient {
+  private val log = LoggerFactory.getLogger(this.getClass)
+
   def apply()(implicit ec: ExecutionContext): HttpClient = new HttpClient() {
     private implicit val backend: SttpBackend[Future, Nothing] = AsyncHttpClientFutureBackend()
 
     override def request(request: HttpRequest): EitherT[Future, HttpError, HttpResponse] = {
-      println(request.url)
+      log.debug(s"Calling desk.com api: ${request.url}")
 
       val sttpRequest = sttp.copy[Id, String, Nothing](
         uri = Uri(new URI(request.url)),
@@ -29,6 +32,7 @@ object HttpClient {
 
       for {
         sttpResponse <- EitherT.right(sttpRequest.send())
+        _ = log.debug(s"Received desk.com response status:${sttpResponse.code} body:${sttpResponse.body.right.getOrElse("").take(200)}")
         body <- EitherT.fromEither(sttpResponse.body).leftMap(HttpError)
       } yield HttpResponse(sttpResponse.code, body)
     }

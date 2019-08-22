@@ -25,24 +25,15 @@ object Exporter {
       for {
         s3Writer <- EitherT
           .fromEither[Future](s3Service.open(config.s3Config))
-          .leftMap(error => ExporterError(s"Failed to create s3 writer: $error"))
-        _ <- writeInteractions(deskComClient, s3Writer, config.pageSize)
+          .leftMap(error => ExporterExportFailure(s"Failed to create s3 writer: $error"))
+        _ <- writeInteractionsAndCleanup(deskComClient, s3Writer)
       } yield ()
     }
 
-    private def writeInteractions(interactionFetcher: InteractionFetcher, s3Writer: S3InteractionsWriter, pageSize: Int) = {
-      val result =
-        for {
-          interactions <- interactionFetcher
-            .getInteractions("0")
-            .leftMap(apiError => ExporterError(s"Export failed: $apiError"))
-          _ <- EitherT.fromEither[Future] {
-          interactions
-            .interactions
-            .traverse[Either[S3Error, ?], Unit](interaction => s3Writer.write(interaction))
-            .leftMap(apiError => ExporterError(s"Export failed: $apiError"))
-          }
-        } yield ()
+    private def writeInteractionsAndCleanup(interactionFetcher: InteractionFetcher, s3Writer: S3InteractionsWriter) = {
+      val result = writeInteractions(interactionFetcher, "0", s3Writer, 0).recover {
+        case ExporterExportComplete() => ()
+      }
 
       EitherT(
         result.value.transform { result =>
@@ -56,7 +47,39 @@ object Exporter {
         }
       )
     }
+
+    private def writeInteractions(interactionFetcher: InteractionFetcher, sinceId: String, s3Writer: S3InteractionsWriter, interactionCount: Long): EitherT[Future, ExporterError, Unit] = {
+      for {
+        batchInfo <- writeInteractionsBatch(interactionFetcher, sinceId, s3Writer)
+        totalInteractions = interactionCount + batchInfo.interactionCount
+        _ = log.debug(s"Written $totalInteractions interactions")
+        _ <- writeInteractions(interactionFetcher, batchInfo.nextBatchId, s3Writer, totalInteractions)
+      } yield ()
+    }
+
+    private case class InteractionBatchInfo(nextBatchId: String, interactionCount: Int)
+
+    private def writeInteractionsBatch(interactionFetcher: InteractionFetcher, sinceId: String, s3Writer: S3InteractionsWriter) = {
+      for {
+        interactions <- interactionFetcher
+          .getInteractions(sinceId)
+          .leftMap[ExporterError] {
+            case _: InteractionFetcherNoMoreInteractions => ExporterExportComplete()
+            case unexpectedError: InteractionFetcherUnexpectedError => ExporterExportFailure(s"Export failed: $unexpectedError")
+          }
+        _ <- EitherT.fromEither[Future] {
+          interactions
+            .interactions
+            .traverse[Either[S3Error, ?], Unit](interaction => s3Writer.write(interaction))
+            .leftMap[ExporterError](apiError => ExporterExportFailure(s"Export failed: $apiError"))
+        }
+      } yield InteractionBatchInfo(interactions.nextBatchSinceId, interactions.interactions.size)
+    }
   }
 }
 
-case class ExporterError(message: String)
+sealed trait ExporterError
+
+case class ExporterExportFailure(message: String) extends ExporterError
+
+case class ExporterExportComplete() extends ExporterError

@@ -31,7 +31,7 @@ class InteractionFetcherSpec extends FlatSpec with ScalaFutures with MustMatcher
 
     Inside.inside(InteractionFetcher(mockDeskComClient, testPageSize).getInteractions(startSinceId).value.futureValue) {
       case Right(interactions) =>
-        interactions.interactions must contain only(InteractionFixture.interaction)
+        interactions.interactions must contain only (InteractionFixture.interaction)
         interactions.nextBatchSinceId must equal(nextSinceId)
     }
   }

@@ -32,7 +32,7 @@ object S3InteractionsWriter {
       { printer =>
         new S3InteractionsWriter() {
           override def write(interaction: Interaction): Either[S3Error, Unit] = {
-            log.debug(s"Writing interaction: $interaction")
+            log.trace(s"Writing interaction: $interaction")
             for {
               caseId <- parseSelfLink(interaction._links.self)
               writeInteractionResult <- writeInteraction(printer, interaction, caseId, scrubSensitiveData)
@@ -58,16 +58,16 @@ object S3InteractionsWriter {
             Either.catchNonFatal {
               printer.printRecord(
                 caseId,
-                interaction.createdAt,
-                interaction.updatedAt,
-                scrubString(interaction.body, scrubSensitiveData),
-                scrubString(interaction.from, scrubSensitiveData),
+                interaction.createdAt.getOrElse(""),
+                interaction.updatedAt.getOrElse(""),
+                scrubString(interaction.body.getOrElse(""), scrubSensitiveData),
+                scrubString(interaction.from.getOrElse(""), scrubSensitiveData),
                 scrubString(interaction.to.getOrElse(""), scrubSensitiveData),
                 scrubString(interaction.cc.getOrElse(""), scrubSensitiveData),
                 scrubString(interaction.bcc.getOrElse(""), scrubSensitiveData),
-                interaction.direction,
-                interaction.status,
-                scrubString(interaction.subject, scrubSensitiveData)
+                interaction.direction.getOrElse(""),
+                interaction.status.getOrElse(""),
+                scrubString(interaction.subject.getOrElse(""), scrubSensitiveData)
               )
             }.leftMap(ex => S3Error(s"Failed to write headers: $ex"))
           }

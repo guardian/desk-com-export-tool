@@ -39,11 +39,11 @@ object DeskComClient {
         httpResponse <- httpClient.request(
           HttpRequest(
             "GET",
-            s"${config.baseUrl}/api/v2/interactions?since_id=$sinceId&per_page=$pageSize&sort_field=created_at&sort_direction=asc",
+            s"${config.baseUrl}/api/v2/interactions?since_id=$sinceId&per_page=$pageSize",
             List(authHeader)
           )
-        ).leftMap(httpError => DeskComApiError(s"Request for interactions failed: $httpError"))
-        _ <- EitherT.fromEither(validateStatusCode(httpResponse.statusCode))
+        ).leftMap(httpError => DeskComUnexpectedApiError(s"Request for interactions failed: $httpError"))
+        _ <- EitherT.fromEither(validateStatusCode(httpResponse))
         parsedResponseBody <- EitherT.fromEither(parseGetAllInteractions(httpResponse.body))
       } yield parsedResponseBody
     }
@@ -51,15 +51,16 @@ object DeskComClient {
     private def parseGetAllInteractions(body: String): Either[DeskComApiError, GetInteractionsResponse] = {
       decode[GetInteractionsResponse](body)
         .leftMap { parsingFailure =>
-          log.debug(s"Failed to parse response error:$parsingFailure response: $body")
-          DeskComApiError(s"Failed to parse interaction response: $parsingFailure")
+          log.debug(s"Failed to parse response response: $body error:$parsingFailure")
+          DeskComUnexpectedApiError(s"Failed to parse interaction response: $parsingFailure")
         }
     }
 
-    private def validateStatusCode(statusCode: Int): Either[DeskComApiError, Unit] = {
-      statusCode match {
+    private def validateStatusCode(httpResponse: HttpResponse): Either[DeskComApiError, Unit] = {
+      httpResponse.statusCode match {
         case 200 => Right(())
-        case statusCode => Left(DeskComApiError(s"Interactions endpoint returned status: $statusCode"))
+        case 422 => Left(DeskComUnprocessableEntity(httpResponse.body.take(1000)))
+        case statusCode => Left(DeskComUnexpectedApiError(s"Interactions endpoint returned status: $statusCode"))
       }
     }
 
@@ -67,8 +68,8 @@ object DeskComClient {
   }
 }
 
-case class Interaction(id: Int, createdAt: String, updatedAt: String, body: String, from: String, to: Option[String],
-                       cc: Option[String], bcc: Option[String], direction: String, status: String, subject: String,
+case class Interaction(id: Int, createdAt: Option[String], updatedAt: Option[String], body: Option[String], from: Option[String], to: Option[String],
+                       cc: Option[String], bcc: Option[String], direction: Option[String], status: Option[String], subject: Option[String],
                        _links: InteractionLinks)
 
 case class InteractionLinks(self: Link)
@@ -79,8 +80,13 @@ case class Link(href: String)
 
 case class GetInteractionsEmbedded(entries: List[Interaction])
 
-case class GetInteractionsResponse(_links:InteractionResultsLinks, _embedded: GetInteractionsEmbedded)
+case class GetInteractionsResponse(_links: InteractionResultsLinks, _embedded: GetInteractionsEmbedded)
 
 case class DeskComApiConfig(baseUrl: String, username: String, password: String)
 
-case class DeskComApiError(message: String)
+sealed trait DeskComApiError
+
+//Indicates there are no more results
+case class DeskComUnexpectedApiError(message: String) extends DeskComApiError
+
+case class DeskComUnprocessableEntity(message: String) extends DeskComApiError
