@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 
 
 trait S3InteractionsWriter {
-  def write(bytes: Interaction): Either[S3Error, Unit]
+  def write(interaction: Interaction): Either[S3Error, Unit]
 
   def close(): Unit
 }

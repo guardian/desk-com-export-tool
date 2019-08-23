@@ -7,6 +7,8 @@ object InteractionFixture {
     InteractionLinks(Link("/api/v2/cases/c11111/message"))
   )
 
+  def interactionWithId(id: Long) = interaction.copy(id = Some(id))
+
   val getInteractionResponse = GetInteractionsResponse(
     InteractionResultsLinks(next = Link("/api/v2/interactions?per_page=12&since_id=next-since-id")),
     GetInteractionsEmbedded(List(InteractionFixture.interaction))
