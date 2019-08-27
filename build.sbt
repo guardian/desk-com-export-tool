@@ -23,5 +23,10 @@ lazy val application = (project in file("application"))
       "-feature",
       "-language:postfixOps"
     ),
+    mainClass in assembly := Some("com.gu.deskcomexporttool.DeskComExportToolApp"),
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", "MANIFEST.MF")  => MergeStrategy.discard
+      case _ => MergeStrategy.first
+    },
     addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.3" cross CrossVersion.binary),
   )

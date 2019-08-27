@@ -9,7 +9,7 @@ trait CommandLineRunner {
   def run(args: Array[String]): Future[Int]
 }
 
-case class ExportConfig(fetchSize: Int = 100,
+case class ExportConfig(pageSize: Int = 100,
                         deskComApiConfig: DeskComApiConfig = DeskComApiConfig(baseUrl = "https://guardianuserhelp.desk.com",
                           username = "", password = ""),
                         s3Config: S3Config = S3Config("s3://ophan-raw-deskdotcom-cases/interactions.csv", "ophan", scrub = false))
@@ -44,7 +44,7 @@ object CommandLineRunner {
 
       private val commandLineParser = new OptionParser[ExportConfig]("desk-com-export-tool") {
         opt[Int]('f', "fetchsize")
-          .action((x, c) => c.copy(fetchSize = x))
+          .action((x, c) => c.copy(pageSize = x))
           .text("number of items fetched from desk.com per api call")
         opt[String]('u', "username")
           .action((x, c) => c.copy(deskComApiConfig = c.deskComApiConfig.copy(username = x)))

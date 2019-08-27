@@ -24,7 +24,7 @@ class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers
 
     config must equal(Some(
       ExportConfig(
-        fetchSize = 50,
+        pageSize = 50,
         DeskComApiConfig("https://guardianuserhelp.desk.com", "aUsername", "aPassword"),
         S3Config("s3://bucket/path", "aprofile", scrub = true)
       )
@@ -33,7 +33,7 @@ class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers
   it must "return error code if error is returned" in {
     val mockExporter = new Exporter {
       override def export(c: ExportConfig): EitherT[Future, ExporterError, Unit] = {
-        EitherT.leftT(ExporterError(""))
+        EitherT.leftT(ExporterExportFailure(""))
       }
     }
 
