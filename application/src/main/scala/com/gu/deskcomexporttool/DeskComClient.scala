@@ -5,6 +5,7 @@ import java.util.Base64
 import cats.data.EitherT
 import cats.instances.future._
 import cats.syntax.either._
+import com.gu.deskcomexporttool.Logging.truncate
 import io.circe.derivation._
 import io.circe.parser._
 import io.circe.{Decoder, derivation}
@@ -59,7 +60,7 @@ object DeskComClient {
     private def validateStatusCode(httpResponse: HttpResponse): Either[DeskComApiError, Unit] = {
       httpResponse.statusCode match {
         case 200 => Right(())
-        case 422 => Left(DeskComUnprocessableEntity(httpResponse.body.take(1000)))
+        case 422 => Left(DeskComUnprocessableEntity(truncate(httpResponse.body)))
         case statusCode => Left(DeskComUnexpectedApiError(s"Interactions endpoint returned status: $statusCode"))
       }
     }

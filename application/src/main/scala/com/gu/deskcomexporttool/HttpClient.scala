@@ -4,6 +4,7 @@ import java.net.URI
 
 import cats.data.EitherT
 import cats.instances.future._
+import com.gu.deskcomexporttool.Logging.truncate
 import com.softwaremill.sttp._
 import com.softwaremill.sttp.asynchttpclient.future.AsyncHttpClientFutureBackend
 import org.slf4j.LoggerFactory
@@ -32,7 +33,8 @@ object HttpClient {
 
       for {
         sttpResponse <- EitherT.right(sttpRequest.send())
-        _ = log.debug(s"Received desk.com response status:${sttpResponse.code} body:${sttpResponse.body.right.getOrElse("").take(200)}")
+        _ = log.debug(s"Received desk.com response status:${sttpResponse.code} " +
+                      s"body:${truncate(sttpResponse.body.right.getOrElse(""))}")
         body = sttpResponse.body.fold(identity, identity)
       } yield HttpResponse(sttpResponse.code, body)
     }
