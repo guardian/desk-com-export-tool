@@ -27,7 +27,7 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
             "\"status\",\"subject\"\n" +
             "\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"test body 1111\"," +
             "\"Test User 1111 <testuser1111@test.com>\",\"<toaddress1111@test.com>\",\"<ccaddress1111@test.com>\"," +
-            "\"<bccaddress1111@test.com>\",\"in\",\"1\",\"Test Subject 1111\"\n"
+            "\"<bccaddress1111@test.com>\",\"TRUE\",\"1\",\"Test Subject 1111\"\n"
         )
     }
   }
@@ -50,31 +50,14 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
             "\"status\",\"subject\"\n" +
             "\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"xxxxxxxxxxxxxx\"," +
             "\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"xxxxxxxxxxxxxxxxxxxxxxxx\",\"xxxxxxxxxxxxxxxxxxxxxxxx\"," +
-            "\"xxxxxxxxxxxxxxxxxxxxxxxxx\",\"in\",\"1\",\"xxxxxxxxxxxxxxxxx\"\n"
+            "\"xxxxxxxxxxxxxxxxxxxxxxxxx\",\"TRUE\",\"1\",\"xxxxxxxxxxxxxxxxx\"\n"
         )
     }
   }
   it must "map status values to status codes" in {
     def testStatusCodeMapping(status: String, statusCodeOption: Option[Int]) = {
-      val writtenData = new ByteArrayOutputStream()
-      val mockBinaryWriter = new S3BinaryWriter {
-        override def outputStream(): OutputStream = writtenData
-
-        override def close(): Unit = ()
-      }
-
-      Inside.inside(S3InteractionsWriter(mockBinaryWriter, scrubSensitiveData = true)) {
-        case Right(interactionWriter) =>
-          interactionWriter.write(InteractionFixture.interaction.copy(status = Some(status))) must equal(Right(()))
-
-          interactionWriter.close()
-
-          val records = CSVFormat
-            .DEFAULT
-            .withFirstRecordAsHeader()
-            .parse(new StringReader(writtenData.toString("UTF-8")))
-            .getRecords()
-
+      Inside.inside(writeInteractionAndParseResults(InteractionFixture.interaction.copy(status = Some(status)))) {
+        case Right(records) =>
           statusCodeOption.fold {
             records.size() must equal(0)
           } { statusCode =>
@@ -90,5 +73,40 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
     testStatusCodeMapping("sent", Some(3))
     testStatusCodeMapping("draft", None)
     testStatusCodeMapping("failed", None)
+  }
+  it must "map status direction field" in {
+    def testDirectionMapping(interactionDirection: String, csvDirection: String) = {
+      Inside.inside(writeInteractionAndParseResults(InteractionFixture.interaction.copy(direction = Some(interactionDirection)))) {
+        case Right(records) =>
+          records.get(0).get("direction") must equal(csvDirection)
+      }
+    }
+
+    testDirectionMapping("in", "TRUE")
+    testDirectionMapping("out", "FALSE")
+    testDirectionMapping("", "")
+  }
+
+  private def writeInteractionAndParseResults(interaction: Interaction) = {
+
+    val writtenData = new ByteArrayOutputStream()
+    val mockBinaryWriter = new S3BinaryWriter {
+      override def outputStream(): OutputStream = writtenData
+
+      override def close(): Unit = ()
+    }
+
+    S3InteractionsWriter(mockBinaryWriter, scrubSensitiveData = true).map { interactionWriter =>
+      interactionWriter.write(interaction) must equal(Right(()))
+
+      interactionWriter.close()
+
+      CSVFormat
+        .DEFAULT
+        .withFirstRecordAsHeader()
+        .parse(new StringReader(writtenData.toString("UTF-8")))
+        .getRecords
+    }
+
   }
 }

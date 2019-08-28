@@ -16,6 +16,8 @@ trait S3InteractionsWriter {
 object S3InteractionsWriter {
   private val log = LoggerFactory.getLogger(this.getClass)
 
+  private val MaxBodyChars = 32759
+
   def apply(s3BinaryWriter: S3BinaryWriter, scrubSensitiveData: Boolean): Either[S3Error, S3InteractionsWriter] = {
     Either.catchNonFatal {
       CSVFormat
@@ -36,7 +38,15 @@ object S3InteractionsWriter {
             for {
               caseId <- parseSelfLink(interaction._links.self)
               mappedStatus = createStatusMapping(interaction.status)
-              writeInteractionResult <- writeInteraction(printer, interaction, caseId, scrubSensitiveData, mappedStatus)
+              mappedDirection = createDirectionMapping(interaction.direction)
+              writeInteractionResult <- writeInteraction(
+                printer,
+                interaction,
+                caseId,
+                scrubSensitiveData,
+                mappedStatus,
+                mappedDirection
+              )
             } yield writeInteractionResult
           }
 
@@ -63,8 +73,16 @@ object S3InteractionsWriter {
             }
           }
 
+          private def createDirectionMapping(direction: Option[String]) : String = {
+            direction match {
+              case Some("in") => "TRUE"
+              case Some("out") => "FALSE"
+              case _ => ""
+            }
+          }
+
           private def writeInteraction(printer: CSVPrinter, interaction: Interaction, caseId: String,
-                                       scrubSensitiveData: Boolean, mappedStatus: Option[Int]) = {
+                                       scrubSensitiveData: Boolean, mappedStatus: Option[Int], mappedDirection: String) = {
             Either.catchNonFatal {
               mappedStatus.fold
                 {
@@ -76,12 +94,12 @@ object S3InteractionsWriter {
                     caseId,
                     interaction.createdAt.getOrElse(""),
                     interaction.updatedAt.getOrElse(""),
-                    scrubString(interaction.body.getOrElse(""), scrubSensitiveData),
+                    scrubString(interaction.body.getOrElse("").take(MaxBodyChars), scrubSensitiveData),
                     scrubString(interaction.from.getOrElse(""), scrubSensitiveData),
                     scrubString(interaction.to.getOrElse(""), scrubSensitiveData),
                     scrubString(interaction.cc.getOrElse(""), scrubSensitiveData),
                     scrubString(interaction.bcc.getOrElse(""), scrubSensitiveData),
-                    interaction.direction.getOrElse(""),
+                    mappedDirection,
                     status.toString,
                     scrubString(interaction.subject.getOrElse(""), scrubSensitiveData)
                   )
