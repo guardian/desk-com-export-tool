@@ -69,7 +69,7 @@ object DeskComClient {
   }
 }
 
-case class Interaction(id: Option[Long], createdAt: Option[String], updatedAt: Option[String], body: Option[String], from: Option[String], to: Option[String],
+case class Interaction(id: Option[Long], createdAt: String, updatedAt: String, body: Option[String], from: Option[String], to: Option[String],
                        cc: Option[String], bcc: Option[String], direction: Option[String], status: Option[String], subject: Option[String],
                        _links: InteractionLinks)
 

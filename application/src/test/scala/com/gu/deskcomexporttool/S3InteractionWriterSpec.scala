@@ -1,10 +1,14 @@
 package com.gu.deskcomexporttool
 
 import java.io.{ByteArrayOutputStream, OutputStream, StringReader}
+import java.time.{Instant, ZoneOffset}
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 import org.apache.commons.csv.CSVFormat
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FlatSpec, Inside, MustMatchers}
+
 import scala.collection.JavaConverters._
 
 class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatchers {
@@ -85,6 +89,22 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
     testDirectionMapping("in", "TRUE")
     testDirectionMapping("out", "FALSE")
     testDirectionMapping("", "")
+  }
+  it must "ensure updated date is on or after created date" in {
+    val createdDate = Instant.now()
+    val updatedDate = createdDate.minus(1, ChronoUnit.SECONDS)
+
+    val dateTimeFormat = DateTimeFormatter.ISO_DATE_TIME.withZone(ZoneOffset.UTC)
+
+    Inside.inside(writeInteractionAndParseResults(
+      InteractionFixture.interaction.copy(
+        createdAt = dateTimeFormat.format(createdDate),
+        updatedAt = dateTimeFormat.format(updatedDate)
+      )
+    )) {
+      case Right(records) =>
+        records.get(0).get("LastModifiedDate") must equal(dateTimeFormat.format(createdDate))
+    }
   }
 
   private def writeInteractionAndParseResults(interaction: Interaction) = {

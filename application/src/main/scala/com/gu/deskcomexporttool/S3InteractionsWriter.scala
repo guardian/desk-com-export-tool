@@ -1,6 +1,8 @@
 package com.gu.deskcomexporttool
 
 import java.io.{BufferedWriter, OutputStreamWriter}
+import java.time.{Instant, ZoneOffset}
+import java.time.format.DateTimeFormatter
 
 import cats.syntax.either._
 import org.apache.commons.csv.{CSVFormat, CSVPrinter, QuoteMode}
@@ -51,13 +53,17 @@ object S3InteractionsWriter {
               caseId <- parseSelfLink(interaction._links.self)
               mappedStatus = createStatusMapping(interaction.status)
               mappedDirection = createDirectionMapping(interaction.direction)
+              createdDate <- parseDate(interaction.createdAt)
+              updatedDate <- parseUpdatedDate(interaction.updatedAt, createdDate)
               writeInteractionResult <- writeInteraction(
                 printer,
                 interaction,
                 caseId,
                 scrubSensitiveData,
                 mappedStatus,
-                mappedDirection
+                mappedDirection,
+                createdDate,
+                updatedDate
               )
             } yield writeInteractionResult
           }
@@ -93,8 +99,28 @@ object S3InteractionsWriter {
             }
           }
 
+          private def parseDate(date: String): Either[S3Error, Instant] = {
+            Either.catchNonFatal {
+              Instant.from(DateTimeFormatter.ISO_DATE_TIME.parse(date))
+            }.leftMap(error => S3Error(s"Failed to parse date: $date error:$error"))
+          }
+
+          private def sanitizeUpdatedDate(createdDate: Instant, updatedDate: Instant) = {
+            if(updatedDate.isBefore(createdDate)) {
+              createdDate
+            } else {
+              updatedDate
+            }
+          }
+
+          private def parseUpdatedDate(updatedDate: String, createdDate: Instant) = {
+            parseDate(updatedDate).map(sanitizeUpdatedDate(createdDate, _))
+          }
+
+          private val csvDateFormat = DateTimeFormatter.ISO_DATE_TIME.withZone(ZoneOffset.UTC)
           private def writeInteraction(printer: CSVPrinter, interaction: Interaction, caseId: String,
-                                       scrubSensitiveData: Boolean, mappedStatus: Option[Int], mappedDirection: String) = {
+                                       scrubSensitiveData: Boolean, mappedStatus: Option[Int], mappedDirection: String,
+                                       createdDate: Instant, updatedDate: Instant) = {
             Either.catchNonFatal {
               mappedStatus.fold
                 {
@@ -105,8 +131,8 @@ object S3InteractionsWriter {
                   printer.printRecord(
                     caseId,
                     caseId,
-                    interaction.createdAt.getOrElse(""),
-                    interaction.updatedAt.getOrElse(""),
+                    csvDateFormat.format(createdDate),
+                    csvDateFormat.format(updatedDate),
                     scrubString(interaction.body.getOrElse("").take(MaxBodyChars), scrubSensitiveData),
                     scrubString(interaction.from.getOrElse(""), scrubSensitiveData),
                     scrubString(interaction.to.getOrElse(""), scrubSensitiveData),
