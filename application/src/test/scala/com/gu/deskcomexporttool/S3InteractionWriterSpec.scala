@@ -23,9 +23,9 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
         interactionWriter.close()
 
         new String(writtenData.toByteArray, "UTF-8") must equal(
-          "\"case_id\",\"created_at\",\"updated_at\",\"body\",\"from\",\"to\",\"cc\",\"bcc\",\"direction\"," +
-            "\"status\",\"subject\"\n" +
-            "\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"test body 1111\"," +
+          "\"ParentCaseDeskId\",\"Desk_Case_Number__c\",\"CreatedDate\",\"LastModifiedDate\",\"TextBody\"," +
+            "\"FromAddress\",\"ToAddress\",\"CcAddress\",\"BccAddress\",\"IsIncoming\",\"Status\",\"Subject\"\n" +
+            "\"c11111\",\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"test body 1111\"," +
             "\"Test User 1111 <testuser1111@test.com>\",\"<toaddress1111@test.com>\",\"<ccaddress1111@test.com>\"," +
             "\"<bccaddress1111@test.com>\",\"TRUE\",\"1\",\"Test Subject 1111\"\n"
         )
@@ -46,9 +46,9 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
         interactionWriter.close()
 
         new String(writtenData.toByteArray, "UTF-8") must equal(
-          "\"case_id\",\"created_at\",\"updated_at\",\"body\",\"from\",\"to\",\"cc\",\"bcc\",\"direction\"," +
-            "\"status\",\"subject\"\n" +
-            "\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"xxxxxxxxxxxxxx\"," +
+          "\"ParentCaseDeskId\",\"Desk_Case_Number__c\",\"CreatedDate\",\"LastModifiedDate\",\"TextBody\"," +
+            "\"FromAddress\",\"ToAddress\",\"CcAddress\",\"BccAddress\",\"IsIncoming\",\"Status\",\"Subject\"\n" +
+            "\"c11111\",\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"xxxxxxxxxxxxxx\"," +
             "\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"xxxxxxxxxxxxxxxxxxxxxxxx\",\"xxxxxxxxxxxxxxxxxxxxxxxx\"," +
             "\"xxxxxxxxxxxxxxxxxxxxxxxxx\",\"TRUE\",\"1\",\"xxxxxxxxxxxxxxxxx\"\n"
         )
@@ -63,7 +63,7 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
           } { statusCode =>
             records
               .get(0)
-              .get("status") must equal(statusCode.toString)
+              .get("Status") must equal(statusCode.toString)
           }
       }
     }
@@ -78,7 +78,7 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
     def testDirectionMapping(interactionDirection: String, csvDirection: String) = {
       Inside.inside(writeInteractionAndParseResults(InteractionFixture.interaction.copy(direction = Some(interactionDirection)))) {
         case Right(records) =>
-          records.get(0).get("direction") must equal(csvDirection)
+          records.get(0).get("IsIncoming") must equal(csvDirection)
       }
     }
 

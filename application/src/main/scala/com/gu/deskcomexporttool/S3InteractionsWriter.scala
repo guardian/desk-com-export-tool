@@ -24,8 +24,20 @@ object S3InteractionsWriter {
         .DEFAULT
         .withQuoteMode(QuoteMode.ALL)
         .withRecordSeparator("\n")
-        .withHeader("case_id", "created_at", "updated_at", "body", "from", "to", "cc", "bcc", "direction",
-          "status", "subject")
+        .withHeader(
+          "ParentCaseDeskId",
+          "Desk_Case_Number__c",
+          "CreatedDate",
+          "LastModifiedDate",
+          "TextBody",
+          "FromAddress",
+          "ToAddress",
+          "CcAddress",
+          "BccAddress",
+          "IsIncoming",
+          "Status",
+          "Subject"
+        )
         .print(new BufferedWriter(new OutputStreamWriter(s3BinaryWriter.outputStream(), "UTF-8")))
     }.bimap(
       { ex =>
@@ -91,6 +103,7 @@ object S3InteractionsWriter {
                 }
                 { status: Int =>
                   printer.printRecord(
+                    caseId,
                     caseId,
                     interaction.createdAt.getOrElse(""),
                     interaction.updatedAt.getOrElse(""),
