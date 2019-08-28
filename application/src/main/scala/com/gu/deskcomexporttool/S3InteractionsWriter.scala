@@ -35,7 +35,8 @@ object S3InteractionsWriter {
             log.trace(s"Writing interaction: $interaction")
             for {
               caseId <- parseSelfLink(interaction._links.self)
-              writeInteractionResult <- writeInteraction(printer, interaction, caseId, scrubSensitiveData)
+              mappedStatus = createStatusMapping(interaction.status)
+              writeInteractionResult <- writeInteraction(printer, interaction, caseId, scrubSensitiveData, mappedStatus)
             } yield writeInteractionResult
           }
 
@@ -53,22 +54,39 @@ object S3InteractionsWriter {
             }
           }
 
+          private def createStatusMapping(status: Option[String]): Option[Int] = {
+            status match {
+              case Some("received") => Some(1)
+              case Some("pending") => Some(3)
+              case Some("sent") => Some(3)
+              case _ => None
+            }
+          }
+
           private def writeInteraction(printer: CSVPrinter, interaction: Interaction, caseId: String,
-                                       scrubSensitiveData: Boolean) = {
+                                       scrubSensitiveData: Boolean, mappedStatus: Option[Int]) = {
             Either.catchNonFatal {
-              printer.printRecord(
-                caseId,
-                interaction.createdAt.getOrElse(""),
-                interaction.updatedAt.getOrElse(""),
-                scrubString(interaction.body.getOrElse(""), scrubSensitiveData),
-                scrubString(interaction.from.getOrElse(""), scrubSensitiveData),
-                scrubString(interaction.to.getOrElse(""), scrubSensitiveData),
-                scrubString(interaction.cc.getOrElse(""), scrubSensitiveData),
-                scrubString(interaction.bcc.getOrElse(""), scrubSensitiveData),
-                interaction.direction.getOrElse(""),
-                interaction.status.getOrElse(""),
-                scrubString(interaction.subject.getOrElse(""), scrubSensitiveData)
-              )
+              mappedStatus.fold
+                {
+                  log.debug(s"Excluded interaction for case:$caseId as it had status of :${interaction.status}")
+                  ()
+                }
+                { status: Int =>
+                  printer.printRecord(
+                    caseId,
+                    interaction.createdAt.getOrElse(""),
+                    interaction.updatedAt.getOrElse(""),
+                    scrubString(interaction.body.getOrElse(""), scrubSensitiveData),
+                    scrubString(interaction.from.getOrElse(""), scrubSensitiveData),
+                    scrubString(interaction.to.getOrElse(""), scrubSensitiveData),
+                    scrubString(interaction.cc.getOrElse(""), scrubSensitiveData),
+                    scrubString(interaction.bcc.getOrElse(""), scrubSensitiveData),
+                    interaction.direction.getOrElse(""),
+                    status.toString,
+                    scrubString(interaction.subject.getOrElse(""), scrubSensitiveData)
+                  )
+                }
+
             }.leftMap(ex => S3Error(s"Failed to write headers: $ex"))
           }
 
