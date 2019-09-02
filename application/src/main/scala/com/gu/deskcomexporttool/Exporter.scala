@@ -18,27 +18,47 @@ trait Exporter {
 object Exporter {
   private val log = LoggerFactory.getLogger(this.getClass)
 
-  def apply(s3Service: S3Service, interactionFetcherFactory: InteractionFetcherFactory)(implicit ec: ExecutionContext): Exporter = new Exporter() {
+  def apply(
+    s3Service: S3Service,
+    interactionFetcherFactory: InteractionFetcherFactory,
+    interactionValidator: InteractionValidator
+  )(implicit ec: ExecutionContext): Exporter = new Exporter() {
     override def export(config: ExportConfig): EitherT[Future, ExporterError, Unit] = {
       val deskComClient = interactionFetcherFactory.create(config.deskComApiConfig, config.pageSize)
 
       for {
-        s3Writer <- EitherT
-          .fromEither[Future](s3Service.open(config.s3Config))
-          .leftMap(error => ExporterExportFailure(s"Failed to create s3 writer: $error"))
-        _ <- writeInteractionsAndCleanup(deskComClient, s3Writer)
+        validS3Writer <- EitherT
+          .fromEither[Future](s3Service.open(config.validInteractionLocation, config.s3Config))
+          .leftMap(error => ExporterExportFailure(s"Failed to create s3 writer for valid interactions: $error"))
+        invalidS3Writer <- EitherT
+          .fromEither[Future](s3Service.open(config.invalidInteractionLocation, config.s3Config))
+          .leftMap(error => ExporterExportFailure(s"Failed to create s3 writer for valid interactions: $error"))
+        _ <- writeInteractionsAndCleanup(deskComClient, validS3Writer, invalidS3Writer, interactionValidator)
       } yield ()
     }
 
-    private def writeInteractionsAndCleanup(interactionFetcher: InteractionFetcher, s3Writer: S3InteractionsWriter) = {
-      val result = writeInteractions(interactionFetcher, "0", s3Writer, 0).recover {
+    private def writeInteractionsAndCleanup(
+      interactionFetcher: InteractionFetcher,
+      validInteractionsWriter: S3InteractionsWriter,
+      invalidInteractionsWriter: S3InteractionsWriter,
+      interactionValidator: InteractionValidator
+    ) = {
+      val result = writeInteractions(
+        interactionFetcher,
+        "0",
+        validInteractionsWriter,
+        invalidInteractionsWriter,
+        0,
+        interactionValidator
+      ).recover {
         case ExporterExportComplete() => ()
       }
 
       EitherT(
         result.value.transform { result =>
           Try {
-            s3Writer.close()
+            validInteractionsWriter.close()
+            invalidInteractionsWriter.close()
             interactionFetcher.close()
           }.recover {
             case ex => log.error(s"Failed to shutdown gracefully: $ex")
@@ -48,18 +68,41 @@ object Exporter {
       )
     }
 
-    private def writeInteractions(interactionFetcher: InteractionFetcher, sinceId: String, s3Writer: S3InteractionsWriter, interactionCount: Long): EitherT[Future, ExporterError, Unit] = {
+    private def writeInteractions(interactionFetcher: InteractionFetcher,
+                                  sinceId: String,
+                                  validInteractionsWriter: S3InteractionsWriter,
+                                  invalidInteractionsWriter: S3InteractionsWriter,
+                                  interactionCount: Long,
+                                  interactionValidator: InteractionValidator): EitherT[Future, ExporterError, Unit] = {
       for {
-        batchInfo <- writeInteractionsBatch(interactionFetcher, sinceId, s3Writer)
+        batchInfo <- writeInteractionsBatch(
+          interactionFetcher,
+          sinceId,
+          validInteractionsWriter,
+          invalidInteractionsWriter,
+          interactionValidator
+        )
         totalInteractions = interactionCount + batchInfo.interactionCount
         _ = log.debug(s"Written $totalInteractions interactions")
-        _ <- writeInteractions(interactionFetcher, batchInfo.nextBatchId, s3Writer, totalInteractions)
+        _ <- writeInteractions(
+          interactionFetcher,
+          batchInfo.nextBatchId,
+          validInteractionsWriter,
+          invalidInteractionsWriter,
+          totalInteractions,
+          interactionValidator)
       } yield ()
     }
 
     private case class InteractionBatchInfo(nextBatchId: String, interactionCount: Int)
 
-    private def writeInteractionsBatch(interactionFetcher: InteractionFetcher, sinceId: String, s3Writer: S3InteractionsWriter) = {
+    private def writeInteractionsBatch(
+      interactionFetcher: InteractionFetcher,
+      sinceId: String,
+      validInteractionsWriter: S3InteractionsWriter,
+      invalidInteractionsWriter: S3InteractionsWriter,
+      interactionValidator: InteractionValidator
+    ) = {
       for {
         interactions <- interactionFetcher
           .getInteractions(sinceId)
@@ -70,7 +113,13 @@ object Exporter {
         _ <- EitherT.fromEither[Future] {
           interactions
             .interactions
-            .traverse[Either[S3Error, ?], Unit](interaction => s3Writer.write(interaction))
+            .traverse[Either[S3Error, ?], Unit] {
+              interaction =>
+                if(interactionValidator.isValid(interaction))
+                  validInteractionsWriter.write(interaction)
+                else
+                  invalidInteractionsWriter.write(interaction)
+            }
             .leftMap[ExporterError](apiError => ExporterExportFailure(s"Export failed: $apiError"))
         }
       } yield InteractionBatchInfo(interactions.nextBatchSinceId, interactions.interactions.size)

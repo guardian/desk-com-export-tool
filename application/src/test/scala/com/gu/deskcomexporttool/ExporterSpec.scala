@@ -3,8 +3,8 @@ package com.gu.deskcomexporttool
 import cats.data.EitherT
 import cats.instances.future._
 import com.gu.deskcomexporttool.InteractionFixture.interactionWithId
-import org.scalatest.{FlatSpec, MustMatchers}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.{FlatSpec, MustMatchers}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -15,12 +15,43 @@ class ExporterSpec extends FlatSpec with ScalaFutures with MustMatchers with Int
     val interaction1: Interaction = interactionWithId(1)
     val interaction2: Interaction = interactionWithId(2)
     val interaction3: Interaction = interactionWithId(3)
+    val invalidInteraction: Interaction = interactionWithId(4)
 
+    val mockInteractionsFetcher = createMockFetcher(interaction1, interaction2, interaction3, invalidInteraction)
+
+    val (writtenValidInteractions, mockValidS3Writer: S3InteractionsWriter) = createMockWriter
+    val (writtenInvalidInteractions, mockInvalidS3Writer: S3InteractionsWriter) = createMockWriter
+
+    val validInteractions = List(interaction1, interaction2, interaction3)
+    val mockInteractionValidator = createMockValidator(validInteractions)
+
+    Exporter(
+      s3Service(mockValidS3Writer, mockInvalidS3Writer),
+      fetcherFactory(mockInteractionsFetcher),
+      mockInteractionValidator
+    ).export(ExportConfig(123, DeskComApiConfig("", "", ""))).value.futureValue must equal(Right(()))
+
+    writtenValidInteractions.toArray must contain only(interaction1, interaction2, interaction3)
+    writtenInvalidInteractions.toArray must contain only (invalidInteraction)
+  }
+
+  private def createMockValidator(validInteractions: List[Interaction]): InteractionValidator = {
+    new InteractionValidator {
+      override def isValid(interaction: Interaction): Boolean = validInteractions.contains(interaction)
+    }
+  }
+
+  private def createMockFetcher(
+    interaction1: Interaction,
+    interaction2: Interaction,
+    interaction3: Interaction,
+    invalidInteraction: Interaction
+  ): InteractionFetcher = {
     val mockInteractionsFetcher = new InteractionFetcher {
 
       var responses = Map(
         "0" -> Right(Interactions(List(interaction1, interaction2), "batch2")),
-        "batch2" -> Right(Interactions(List(interaction3), "batch3")),
+        "batch2" -> Right(Interactions(List(interaction3, invalidInteraction), "batch3")),
         "batch3" -> Left(InteractionFetcherNoMoreInteractions())
       )
 
@@ -29,28 +60,36 @@ class ExporterSpec extends FlatSpec with ScalaFutures with MustMatchers with Int
 
       override def close(): Unit = ()
     }
+    mockInteractionsFetcher
+  }
 
-    val writtenInteractions = ArrayBuffer[Interaction]()
+  private def createMockWriter: (ArrayBuffer[Interaction], S3InteractionsWriter) = {
+    val writtenValidInteractions = ArrayBuffer[Interaction]()
 
-    val mockS3Writer = new S3InteractionsWriter {
+    val mockValidS3Writer = new S3InteractionsWriter {
       override def write(interaction: Interaction): Either[S3Error, Unit] = {
-        writtenInteractions.append(interaction)
+        writtenValidInteractions.append(interaction)
         Right(())
       }
 
       override def close(): Unit = ()
     }
-
-    Exporter(s3Service(mockS3Writer), fetcherFactory(mockInteractionsFetcher))
-      .export(ExportConfig(123, DeskComApiConfig("", "", ""))).value.futureValue must equal(Right(()))
-
-    writtenInteractions.toArray must contain only (interaction1, interaction2, interaction3)
+    (writtenValidInteractions, mockValidS3Writer)
   }
 
-
-  private def s3Service(mockS3Writer: S3InteractionsWriter) = {
+  private def s3Service(
+    mockValidS3Writer: S3InteractionsWriter,
+    mockInvalidS3Writer: S3InteractionsWriter
+  ): S3Service = {
     val mockS3Service = new S3Service {
-      override def open(config: S3Config): Either[S3Error, S3InteractionsWriter] = Right(mockS3Writer)
+      override def open(location: String, config: S3Config): Either[S3Error, S3InteractionsWriter] = {
+        Right(
+          location match {
+            case "s3://ophan-raw-deskdotcom-cases/interactions.csv" => mockValidS3Writer
+            case "s3://ophan-raw-deskdotcom-cases/interactions-invalid.csv" => mockInvalidS3Writer
+          }
+        )
+      }
     }
     mockS3Service
   }

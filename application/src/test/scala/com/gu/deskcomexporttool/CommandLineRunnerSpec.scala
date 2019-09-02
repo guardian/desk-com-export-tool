@@ -19,14 +19,17 @@ class CommandLineRunnerSpec extends FlatSpec with ScalaFutures with MustMatchers
     }
 
     CommandLineRunner(mockExporter).run(Array(
-      "-f", "50", "-u", "aUsername", "-p", "aPassword", "-o", "aprofile", "-s", "s3://bucket/path"
+      "-f", "50", "-u", "aUsername", "-p", "aPassword", "-o", "aprofile", "-s", "s3://bucket/valid-path",
+      "s3://bucket/invalid-path"
     )).futureValue mustBe 0
 
     config must equal(Some(
       ExportConfig(
         pageSize = 50,
         DeskComApiConfig("https://guardianuserhelp.desk.com", "aUsername", "aPassword"),
-        S3Config("s3://bucket/path", "aprofile", scrub = true)
+        "s3://bucket/valid-path",
+        "s3://bucket/invalid-path",
+        S3Config("aprofile", scrub = true)
       )
     ))
   }

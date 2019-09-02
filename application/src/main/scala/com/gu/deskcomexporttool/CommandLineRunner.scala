@@ -12,7 +12,9 @@ trait CommandLineRunner {
 case class ExportConfig(pageSize: Int = 100,
                         deskComApiConfig: DeskComApiConfig = DeskComApiConfig(baseUrl = "https://guardianuserhelp.desk.com",
                           username = "", password = ""),
-                        s3Config: S3Config = S3Config("s3://ophan-raw-deskdotcom-cases/interactions.csv", "ophan", scrub = false))
+                        validInteractionLocation: String = "s3://ophan-raw-deskdotcom-cases/interactions.csv",
+                        invalidInteractionLocation: String = "s3://ophan-raw-deskdotcom-cases/interactions-invalid.csv",
+                        s3Config: S3Config = S3Config("ophan", scrub = false))
 
 object CommandLineRunner {
   private val log = LoggerFactory.getLogger(classOf[CommandLineRunner])
@@ -58,11 +60,14 @@ object CommandLineRunner {
         opt[Unit]('s', "scrub")
           .action((_, c) => c.copy(s3Config = c.s3Config.copy(scrub = true)))
           .text("anonymise sensitive data")
-        arg[String]("<s3 export location>...")
-          .unbounded()
+        arg[String]("<s3 valid interactions location>...")
           .optional()
-          .action((x, c) => c.copy(s3Config = c.s3Config.copy(location = x)))
-          .text("s3 export location")
+          .action((x, c) => c.copy(validInteractionLocation = x))
+          .text("s3 valid interactions csv file location")
+        arg[String]("<s3 invalid interactions location>...")
+          .optional()
+          .action((x, c) => c.copy(invalidInteractionLocation = x))
+          .text("s3 invalid interactions csv file location")
       }
 
       private def returnFailure = Future.successful(FAILURE_CODE)
