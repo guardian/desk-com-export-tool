@@ -9,6 +9,8 @@ trait InteractionValidator {
 object InteractionValidator {
   private val log = LoggerFactory.getLogger(this.getClass)
 
+  private val MaxFieldChars = 30000
+
   def apply(): InteractionValidator = new InteractionValidator() {
 
     override def isValid(interaction: Interaction): Boolean = {
@@ -18,7 +20,7 @@ object InteractionValidator {
 
     private def validateString(fieldName: String, selfLink: String, fieldOption: Option[String]): Boolean = {
       fieldOption match {
-        case Some(field) if field.size > 30000 =>
+        case Some(field) if field.size > MaxFieldChars =>
           log.info(s"Interaction $selfLink has an invalid field $fieldName")
           false
         case _ =>

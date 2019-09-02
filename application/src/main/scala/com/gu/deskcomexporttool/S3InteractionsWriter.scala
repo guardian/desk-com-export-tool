@@ -18,8 +18,6 @@ trait S3InteractionsWriter {
 object S3InteractionsWriter {
   private val log = LoggerFactory.getLogger(this.getClass)
 
-  private val MaxBodyChars = 32759
-
   def apply(s3BinaryWriter: S3BinaryWriter, scrubSensitiveData: Boolean): Either[S3Error, S3InteractionsWriter] = {
     Either.catchNonFatal {
       CSVFormat
@@ -133,7 +131,7 @@ object S3InteractionsWriter {
                     caseId,
                     csvDateFormat.format(createdDate),
                     csvDateFormat.format(updatedDate),
-                    scrubString(interaction.body.getOrElse("").take(MaxBodyChars), scrubSensitiveData),
+                    scrubString(interaction.body.getOrElse(""), scrubSensitiveData),
                     scrubString(interaction.from.getOrElse(""), scrubSensitiveData),
                     scrubString(interaction.to.getOrElse(""), scrubSensitiveData),
                     scrubString(interaction.cc.getOrElse(""), scrubSensitiveData),
