@@ -132,10 +132,10 @@ object S3InteractionsWriter {
                     csvDateFormat.format(createdDate),
                     csvDateFormat.format(updatedDate),
                     scrubString(interaction.body.getOrElse(""), scrubSensitiveData),
-                    scrubString(interaction.from.getOrElse(""), scrubSensitiveData),
-                    scrubString(interaction.to.getOrElse(""), scrubSensitiveData),
-                    scrubString(interaction.cc.getOrElse(""), scrubSensitiveData),
-                    scrubString(interaction.bcc.getOrElse(""), scrubSensitiveData),
+                    scrubString(formatEmailAddress(interaction.from.getOrElse("")), scrubSensitiveData),
+                    scrubString(formatEmailAddress(interaction.to.getOrElse("")), scrubSensitiveData),
+                    scrubString(formatEmailAddress(interaction.cc.getOrElse("")), scrubSensitiveData),
+                    scrubString(formatEmailAddress(interaction.bcc.getOrElse("")), scrubSensitiveData),
                     mappedDirection,
                     status.toString,
                     scrubString(interaction.subject.getOrElse(""), scrubSensitiveData)
@@ -151,6 +151,19 @@ object S3InteractionsWriter {
             } else {
               string
             }
+          }
+
+          val DeskEmailFieldFormat = """^.*?<(.*?)>.*$""".r
+          val validEmailAddress = """.*@.*""".r
+          private def formatEmailAddress(deskEmailFormat: String) = {
+            deskEmailFormat
+              .split(',')
+              .map {
+                case DeskEmailFieldFormat(email) => email
+                case other => other
+              }
+              .filter(email => validEmailAddress.findFirstIn(email).isDefined)
+              .mkString(";")
           }
         }
       }

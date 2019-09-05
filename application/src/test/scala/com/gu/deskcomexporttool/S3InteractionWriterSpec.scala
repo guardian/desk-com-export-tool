@@ -9,8 +9,6 @@ import org.apache.commons.csv.CSVFormat
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FlatSpec, Inside, MustMatchers}
 
-import scala.collection.JavaConverters._
-
 class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatchers {
   "S3InteractionWriter" must "format interaction as csv" in {
     val writtenData = new ByteArrayOutputStream()
@@ -30,8 +28,8 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
           "\"ParentCaseDeskId\",\"Desk_Case_Number__c\",\"CreatedDate\",\"LastModifiedDate\",\"TextBody\"," +
             "\"FromAddress\",\"ToAddress\",\"CcAddress\",\"BccAddress\",\"IsIncoming\",\"Status\",\"Subject\"\n" +
             "\"c11111\",\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"test body 1111\"," +
-            "\"Test User 1111 <testuser1111@test.com>\",\"<toaddress1111@test.com>\",\"<ccaddress1111@test.com>\"," +
-            "\"<bccaddress1111@test.com>\",\"TRUE\",\"1\",\"Test Subject 1111\"\n"
+            "\"testuser1111@test.com\",\"toaddress1111@test.com\",\"ccaddress1111@test.com\"," +
+            "\"bccaddress1111@test.com\",\"TRUE\",\"1\",\"Test Subject 1111\"\n"
         )
     }
   }
@@ -53,8 +51,8 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
           "\"ParentCaseDeskId\",\"Desk_Case_Number__c\",\"CreatedDate\",\"LastModifiedDate\",\"TextBody\"," +
             "\"FromAddress\",\"ToAddress\",\"CcAddress\",\"BccAddress\",\"IsIncoming\",\"Status\",\"Subject\"\n" +
             "\"c11111\",\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"xxxxxxxxxxxxxx\"," +
-            "\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"xxxxxxxxxxxxxxxxxxxxxxxx\",\"xxxxxxxxxxxxxxxxxxxxxxxx\"," +
-            "\"xxxxxxxxxxxxxxxxxxxxxxxxx\",\"TRUE\",\"1\",\"xxxxxxxxxxxxxxxxx\"\n"
+            "\"xxxxxxxxxxxxxxxxxxxxx\",\"xxxxxxxxxxxxxxxxxxxxxx\",\"xxxxxxxxxxxxxxxxxxxxxx\"," +
+            "\"xxxxxxxxxxxxxxxxxxxxxxx\",\"TRUE\",\"1\",\"xxxxxxxxxxxxxxxxx\"\n"
         )
     }
   }
@@ -90,6 +88,53 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
     testDirectionMapping("out", "FALSE")
     testDirectionMapping("", "")
   }
+  it must "format email addresses correctly" in {
+    def testDirectionMapping(interactionDirection: String, csvDirection: String) = {
+      val deskEmailFormat = "Name 1<email1@test.com>,Name 2<email2@test.com>,email3@test.com,"
+
+      val csvEmailFormat = "email1@test.com;email2@test.com;email3@test.com"
+      Inside.inside(writeInteractionAndParseResults(
+        InteractionFixture.interaction.copy(
+          to = Some(deskEmailFormat),
+          from = Some(deskEmailFormat),
+          cc = Some(deskEmailFormat),
+          bcc = Some(deskEmailFormat)
+        ))) {
+        case Right(records) =>
+          records.get(0).get("FromAddress") must equal(csvEmailFormat)
+          records.get(0).get("ToAddress") must equal(csvEmailFormat)
+          records.get(0).get("CcAddress") must equal(csvEmailFormat)
+          records.get(0).get("BccAddress") must equal(csvEmailFormat)
+      }
+    }
+
+    testDirectionMapping("in", "TRUE")
+    testDirectionMapping("out", "FALSE")
+    testDirectionMapping("", "")
+  }
+  it must "remove invalid email addresses" in {
+    def testDirectionMapping(interactionDirection: String, csvDirection: String) = {
+      val deskEmailFormat = "Name 1<not email>,Name 2<asdasd>,email3attest.com,twitter"
+
+      Inside.inside(writeInteractionAndParseResults(
+        InteractionFixture.interaction.copy(
+          to = Some(deskEmailFormat),
+          from = Some(deskEmailFormat),
+          cc = Some(deskEmailFormat),
+          bcc = Some(deskEmailFormat)
+        ))) {
+        case Right(records) =>
+          records.get(0).get("FromAddress") must equal("")
+          records.get(0).get("ToAddress") must equal("")
+          records.get(0).get("CcAddress") must equal("")
+          records.get(0).get("BccAddress") must equal("")
+      }
+    }
+
+    testDirectionMapping("in", "TRUE")
+    testDirectionMapping("out", "FALSE")
+    testDirectionMapping("", "")
+  }
   it must "ensure updated date is on or after created date" in {
     val createdDate = Instant.now()
     val updatedDate = createdDate.minus(1, ChronoUnit.SECONDS)
@@ -116,7 +161,7 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
       override def close(): Unit = ()
     }
 
-    S3InteractionsWriter(mockBinaryWriter, scrubSensitiveData = true).map { interactionWriter =>
+    S3InteractionsWriter(mockBinaryWriter, scrubSensitiveData = false).map { interactionWriter =>
       interactionWriter.write(interaction) must equal(Right(()))
 
       interactionWriter.close()
