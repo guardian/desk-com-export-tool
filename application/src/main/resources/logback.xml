@@ -11,4 +11,7 @@
         <appender-ref ref="CONSOLE"/>
     </root>
 
+    <logger name="com.gu.deskcomexporttool" level="debug" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
 </configuration>

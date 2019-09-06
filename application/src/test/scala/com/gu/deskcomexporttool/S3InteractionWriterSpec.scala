@@ -26,10 +26,10 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
 
         new String(writtenData.toByteArray, "UTF-8") must equal(
           "\"ParentCaseDeskId\",\"Desk_Case_Number__c\",\"CreatedDate\",\"LastModifiedDate\",\"TextBody\"," +
-            "\"FromAddress\",\"ToAddress\",\"CcAddress\",\"BccAddress\",\"IsIncoming\",\"Status\",\"Subject\"\n" +
+            "\"FromAddress\",\"ToAddress\",\"CcAddress\",\"BccAddress\",\"IsIncoming\",\"Status\",\"Subject\",\"InteractionId\"\n" +
             "\"c11111\",\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"test body 1111\"," +
             "\"testuser1111@test.com\",\"toaddress1111@test.com\",\"ccaddress1111@test.com\"," +
-            "\"bccaddress1111@test.com\",\"TRUE\",\"1\",\"Test Subject 1111\"\n"
+            "\"bccaddress1111@test.com\",\"TRUE\",\"1\",\"Test Subject 1111\",\"1111\"\n"
         )
     }
   }
@@ -49,10 +49,11 @@ class S3InteractionWriterSpec extends FlatSpec with ScalaFutures with MustMatche
 
         new String(writtenData.toByteArray, "UTF-8") must equal(
           "\"ParentCaseDeskId\",\"Desk_Case_Number__c\",\"CreatedDate\",\"LastModifiedDate\",\"TextBody\"," +
-            "\"FromAddress\",\"ToAddress\",\"CcAddress\",\"BccAddress\",\"IsIncoming\",\"Status\",\"Subject\"\n" +
+            "\"FromAddress\",\"ToAddress\",\"CcAddress\",\"BccAddress\",\"IsIncoming\",\"Status\",\"Subject\"," +
+            "\"InteractionId\"\n" +
             "\"c11111\",\"c11111\",\"2018-01-01T01:01:01Z\",\"2019-01-01T01:01:01Z\",\"xxxxxxxxxxxxxx\"," +
             "\"xxxxxxxxxxxxxxxxxxxxx\",\"xxxxxxxxxxxxxxxxxxxxxx\",\"xxxxxxxxxxxxxxxxxxxxxx\"," +
-            "\"xxxxxxxxxxxxxxxxxxxxxxx\",\"TRUE\",\"1\",\"xxxxxxxxxxxxxxxxx\"\n"
+            "\"xxxxxxxxxxxxxxxxxxxxxxx\",\"TRUE\",\"1\",\"xxxxxxxxxxxxxxxxx\",\"1111\"\n"
         )
     }
   }

@@ -36,7 +36,8 @@ object S3InteractionsWriter {
           "BccAddress",
           "IsIncoming",
           "Status",
-          "Subject"
+          "Subject",
+          "InteractionId"
         )
         .print(new BufferedWriter(new OutputStreamWriter(s3BinaryWriter.outputStream(), "UTF-8")))
     }.bimap(
@@ -138,7 +139,8 @@ object S3InteractionsWriter {
                     scrubString(formatEmailAddress(interaction.bcc.getOrElse("")), scrubSensitiveData),
                     mappedDirection,
                     status.toString,
-                    scrubString(interaction.subject.getOrElse(""), scrubSensitiveData)
+                    scrubString(interaction.subject.getOrElse(""), scrubSensitiveData),
+                    interaction.id.map(_.toString).getOrElse("")
                   )
                 }
 
@@ -154,7 +156,7 @@ object S3InteractionsWriter {
           }
 
           val DeskEmailFieldFormat = """^.*?<(.*?)>.*$""".r
-          val validEmailAddress = """.*@.*""".r
+          val ValidEmailAddress = """.*@.*""".r
           private def formatEmailAddress(deskEmailFormat: String) = {
             deskEmailFormat
               .split(',')
@@ -162,7 +164,7 @@ object S3InteractionsWriter {
                 case DeskEmailFieldFormat(email) => email
                 case other => other
               }
-              .filter(email => validEmailAddress.findFirstIn(email).isDefined)
+              .filter(email => ValidEmailAddress.findFirstIn(email).isDefined)
               .mkString(";")
           }
         }
