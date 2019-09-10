@@ -1,20 +1,33 @@
 package com.gu.deskcomexporttool
 
+import com.gu.deskcomexporttool.InteractionFixture.interaction
+import com.gu.deskcomexporttool.InteractionValidator.{MaxBodyFieldChars, MaxEmailFieldChars, MaxSubjectFieldChars}
 import org.scalatest.{FlatSpec, MustMatchers}
 
 class InteractionValidatorSpec extends FlatSpec with MustMatchers {
   val validator = InteractionValidator()
-  val invalidString = new String(Array.fill[Char](30001)('x'))
+  def invalidString(maxValidSize: Int) = new String(Array.fill[Char](maxValidSize + 10)('x'))
 
   "InteractionValidator" must "return true for valid interaction" in {
-    validator.isValid(InteractionFixture.interaction) must equal(true)
+    validator.isValid(interaction) must equal(true)
   }
 
   "InteractionValidator" must "return false for interaction with too long body" in {
-    validator.isValid(InteractionFixture.interaction.copy(body = Some(invalidString))) must equal(false)
+    validator.isValid(interaction.copy(body = Some(invalidString(MaxBodyFieldChars)))) must equal(false)
   }
 
   "InteractionValidator" must "return false for interaction with too long subject" in {
-    validator.isValid(InteractionFixture.interaction.copy(subject = Some(invalidString))) must equal(false)
+    validator.isValid(interaction.copy(subject = Some(invalidString(MaxSubjectFieldChars)))) must equal(false)
+  }
+
+  "InteractionValidator" must "return false for interaction with too long to addresss" in {
+    validator.isValid(interaction.copy(to = Some(invalidString(MaxEmailFieldChars)))) must equal(false)
+  }
+
+  "InteractionValidator" must "return false for interaction with too long cc address" in {
+    validator.isValid(interaction.copy(cc = Some(invalidString(MaxEmailFieldChars)))) must equal(false)
+  }
+  "InteractionValidator" must "return false for interaction with too long bcc address" in {
+    validator.isValid(interaction.copy(bcc = Some(invalidString(MaxEmailFieldChars)))) must equal(false)
   }
 }
